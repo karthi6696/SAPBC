@@ -34,6 +34,7 @@ codeunit 85020 "TTS-ARAP Matching"
             TTS_SAP."Matching Status"::Unmatched, 
             TTS_SAP."Matching Status"::Error);
         TTS_SAP.SetRange(Activity, 'INVOICE');
+        TTS_SAP.SetLoadFields(PaymentReference, TestCostWithoutVat);
         
         if TTS_SAP.FindSet() then
             repeat
@@ -59,6 +60,7 @@ codeunit 85020 "TTS-ARAP Matching"
             TTS_ARAP."LOB Matching Status"::Unmatched, 
             TTS_ARAP."LOB Matching Status"::Error);
         TTS_ARAP.SetRange(Activity, 'PAYMENT');
+        TTS_ARAP.SetLoadFields(ReceiptNumber, ReceiptAmount);
         
         if TTS_ARAP.FindSet() then
             repeat
@@ -125,6 +127,8 @@ codeunit 85020 "TTS-ARAP Matching"
                     TTS_SAP."Matching Status"::Error);
                 TTS_SAP.SetRange(Activity, 'INVOICE');
                 TTS_SAP.SetRange(PaymentReference, TempMatchedPairs."Reference Key");
+                TTS_SAP.SetLoadFields("Matching Status", "Matching ID", "Matching Processed Date Time", 
+                    "Match Details", "Match Type", "Matched By");
                 
                 if TTS_SAP.FindSet(true) then
                     repeat
@@ -146,6 +150,8 @@ codeunit 85020 "TTS-ARAP Matching"
                     TTS_ARAP."LOB Matching Status"::Error);
                 TTS_ARAP.SetRange(Activity, 'PAYMENT');
                 TTS_ARAP.SetRange(ReceiptNumber, TempMatchedPairs."Reference Key");
+                TTS_ARAP.SetLoadFields("LOB Matching Status", "LOB Matching ID", "LOB Processed Date Time", 
+                    "LOB Match Details", "LOB Match Type", "LOB Matched By");
                 
                 if TTS_ARAP.FindSet(true) then
                     repeat
