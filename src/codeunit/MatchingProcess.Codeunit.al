@@ -639,8 +639,8 @@ codeunit 85000 "Matching Process"
     local procedure UpdateLOBMatchedRecords()
     var
         TempRecordRef: RecordRef;
-        ExistingMatchType: Enum "Match Type";
         ExistingMatchTypeValue: Integer;
+        CurrentMatchTypeValue: Integer;
     begin
         // Performance: Use a separate RecordRef to avoid reopening LOBRecordRef
         TempRecordRef.Open(Database::TTS_SAP);
@@ -648,15 +648,17 @@ codeunit 85000 "Matching Process"
         TempRecordRef.Field(ParentMatchingRule."LOB Field No.").SetFilter(Record);
         if MatchType = MatchType::Manual then
             TempRecordRef.Field(1).SetFilter(CopyStr(LOBEntry.ToText(), 1, LOBEntry.Length - 1));
+        
+        CurrentMatchTypeValue := MatchType.AsInteger();
+        
         if TempRecordRef.FindSet() then
             repeat
                 // Match Type Priority: Check existing match type (Force > Manual > Automatic)
                 // Only update if current match type is higher or equal priority
                 ExistingMatchTypeValue := TempRecordRef.Field(42).Value;
-                ExistingMatchType := Enum::"Match Type".FromInteger(ExistingMatchTypeValue);
                 
                 // Only update if new match type has higher or equal priority
-                if MatchType >= ExistingMatchType then begin
+                if CurrentMatchTypeValue >= ExistingMatchTypeValue then begin
                     TempRecordRef.Field(85005).Value := MatchingOption;
                     TempRecordRef.Field(85006).Value := MatchingId;
                     TempRecordRef.Field(85007).Value := CurrentDateTime;
@@ -673,8 +675,8 @@ codeunit 85000 "Matching Process"
     local procedure UpdateEODMatchedRecords()
     var
         TempRecordRef: RecordRef;
-        ExistingMatchType: Enum "Match Type";
         ExistingMatchTypeValue: Integer;
+        CurrentMatchTypeValue: Integer;
     begin
         // Performance: Use a separate RecordRef to avoid reopening EODRecordRef
         TempRecordRef.Open(Database::"EOD Staging");
@@ -682,15 +684,17 @@ codeunit 85000 "Matching Process"
         TempRecordRef.Field(ParentMatchingRule."EOD Field No.").SetFilter(Record);
         if MatchType = MatchType::Manual then
             TempRecordRef.Field(1).SetFilter(CopyStr(EODEntryNo.ToText(), 1, EODEntryNo.Length - 1));
+        
+        CurrentMatchTypeValue := MatchType.AsInteger();
+        
         if TempRecordRef.FindSet() then
             repeat
                 // Match Type Priority: Check existing match type (Force > Manual > Automatic)
                 // Only update if current match type is higher or equal priority
                 ExistingMatchTypeValue := TempRecordRef.Field(37).Value;
-                ExistingMatchType := Enum::"Match Type".FromInteger(ExistingMatchTypeValue);
                 
                 // Only update if new match type has higher or equal priority
-                if MatchType >= ExistingMatchType then begin
+                if CurrentMatchTypeValue >= ExistingMatchTypeValue then begin
                     TempRecordRef.Field(31).Value := MatchingOption;
                     TempRecordRef.Field(32).Value := MatchingId;
                     TempRecordRef.Field(33).Value := CurrentDateTime;
@@ -707,8 +711,8 @@ codeunit 85000 "Matching Process"
     local procedure UpdateCPMSLOBMatchedRecords()
     var
         TempRecordRef: RecordRef;
-        ExistingMatchType: Enum "Match Type";
         ExistingMatchTypeValue: Integer;
+        CurrentMatchTypeValue: Integer;
     begin
         // Performance: Use a separate RecordRef to avoid reopening CPMSRecordRef
         TempRecordRef.Open(Database::TTS_ARAP);
@@ -719,15 +723,17 @@ codeunit 85000 "Matching Process"
             TempRecordRef.Field(ParentMatchingRule."CPMS Field No.").SetFilter(Record);
         if MatchType = MatchType::Manual then
             TempRecordRef.Field(1).SetFilter(CopyStr(CPMSEntryNo.ToText(), 1, CPMSEntryNo.Length - 1));
+        
+        CurrentMatchTypeValue := MatchType.AsInteger();
+        
         if TempRecordRef.FindSet() then
             repeat
                 // Match Type Priority: Check existing match type (Force > Manual > Automatic)
                 // Only update if current match type is higher or equal priority
                 ExistingMatchTypeValue := TempRecordRef.Field(53).Value;
-                ExistingMatchType := Enum::"Match Type".FromInteger(ExistingMatchTypeValue);
                 
                 // Only update if new match type has higher or equal priority
-                if MatchType >= ExistingMatchType then begin
+                if CurrentMatchTypeValue >= ExistingMatchTypeValue then begin
                     TempRecordRef.Field(85009).Value := MatchingOption;
                     TempRecordRef.Field(85010).Value := MatchingId;
                     TempRecordRef.Field(85013).Value := CurrentDateTime;
@@ -744,8 +750,8 @@ codeunit 85000 "Matching Process"
     local procedure UpdateCPMSEODMatchedRecords()
     var
         TempRecordRef: RecordRef;
-        ExistingMatchType: Enum "Match Type";
         ExistingMatchTypeValue: Integer;
+        CurrentMatchTypeValue: Integer;
     begin
         // Performance: Use a separate RecordRef to avoid reopening CPMSRecordRef
         TempRecordRef.Open(Database::TTS_ARAP);
@@ -753,15 +759,17 @@ codeunit 85000 "Matching Process"
         TempRecordRef.Field(ParentMatchingRule."CPMS Field No.").SetFilter(Record);
         if MatchType = MatchType::Manual then
             TempRecordRef.Field(1).SetFilter(CopyStr(CPMSEntryNo.ToText(), 1, CPMSEntryNo.Length - 1));
+        
+        CurrentMatchTypeValue := MatchType.AsInteger();
+        
         if TempRecordRef.FindSet() then
             repeat
                 // Match Type Priority: Check existing match type (Force > Manual > Automatic)
                 // Only update if current match type is higher or equal priority
                 ExistingMatchTypeValue := TempRecordRef.Field(52).Value;
-                ExistingMatchType := Enum::"Match Type".FromInteger(ExistingMatchTypeValue);
                 
                 // Only update if new match type has higher or equal priority
-                if MatchType >= ExistingMatchType then begin
+                if CurrentMatchTypeValue >= ExistingMatchTypeValue then begin
                     TempRecordRef.Field(85011).Value := MatchingOption;
                     TempRecordRef.Field(85012).Value := MatchingId;
                     TempRecordRef.Field(85014).Value := CurrentDateTime;
