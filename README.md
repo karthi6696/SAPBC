@@ -20,8 +20,12 @@ New matching functionality has been added to handle FTTS scheme transactions bet
 2. Click "Setup/Update Matching Rules"
 3. Run matching process via "Run FTTS Matching Process" button
 
+For a step-by-step guide, see: [FTTS Matching Quick Start Guide](docs/FTTS_Matching_QuickStart.md)
+
 **Documentation:**
-See [FTTS Matching Documentation](docs/FTTS_Matching_Documentation.md) for detailed setup and usage instructions.
+- [Quick Start Guide](docs/FTTS_Matching_QuickStart.md) - Get started in 5 minutes
+- [Full Documentation](docs/FTTS_Matching_Documentation.md) - Detailed setup and usage
+- [Implementation Summary](docs/FTTS_Matching_Implementation_Summary.md) - Technical details
 
 ## Project Structure
 
