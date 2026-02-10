@@ -65,11 +65,26 @@ page 85022 "LOB-CPMS Matching"
                         TempLOB: Record TTS_SAP temporary;
                         TempCPMS: Record TTS_ARAP temporary;
                         MatchingProcess: Codeunit "Matching Process";
+                        LOBCount, CPMSCount: Integer;
+                        ConfirmMsg: Label 'Manual Match Summary:\LOB Records Selected: %1\CPMS Records Selected: %2\\Do you want to proceed with manual matching?';
                     begin
-                        if not Confirm('Do you want to proceed with Manual Matching?', true) then
-                            exit;
+                        // Selection Validation: Get selected records and validate
                         CurrPage.TTS.Page.GetSelectedRecords(TempLOB);
                         CurrPage.CPMS.Page.GetSelectedRecords(TempCPMS);
+                        
+                        LOBCount := TempLOB.Count();
+                        CPMSCount := TempCPMS.Count();
+                        
+                        // Validation: Ensure both sides have selections
+                        if LOBCount = 0 then
+                            Error('Please select at least one LOB record before manual matching.');
+                        if CPMSCount = 0 then
+                            Error('Please select at least one CPMS record before manual matching.');
+                        
+                        // Enhanced confirmation with selection counts
+                        if not Confirm(StrSubstNo(ConfirmMsg, LOBCount, CPMSCount), true) then
+                            exit;
+
                         Clear(MatchingProcess);
                         MatchingProcess.SetMatchType(Enum::"Match Type"::Manual);
                         MatchingProcess.SetSelectedLOB(TempLOB);
@@ -89,11 +104,22 @@ page 85022 "LOB-CPMS Matching"
                         TempLOB: Record TTS_SAP temporary;
                         TempCPMS: Record TTS_ARAP temporary;
                         MatchingProcess: Codeunit "Matching Process";
+                        LOBCount, CPMSCount: Integer;
                     begin
-                        if not Confirm('Do you want to proceed with Force Matching?', true) then
-                            exit;
+                        // Selection Validation: Get selected records and validate
                         CurrPage.TTS.Page.GetSelectedRecords(TempLOB);
                         CurrPage.CPMS.Page.GetSelectedRecords(TempCPMS);
+                        
+                        LOBCount := TempLOB.Count();
+                        CPMSCount := TempCPMS.Count();
+                        
+                        // Validation: Ensure both sides have selections
+                        if LOBCount = 0 then
+                            Error('Please select at least one LOB record before force matching.');
+                        if CPMSCount = 0 then
+                            Error('Please select at least one CPMS record before force matching.');
+                        
+                        // Force match will show its own detailed confirmation
                         Clear(MatchingProcess);
                         MatchingProcess.ForceLOBCPMSMatch(TempLOB, TempCPMS);
                     end;

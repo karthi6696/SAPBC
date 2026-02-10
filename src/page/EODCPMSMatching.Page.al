@@ -63,11 +63,26 @@ page 85019 "EOD-CPMS Matching"
                         TempEOD: Record "EOD Staging" temporary;
                         TempCPMS: Record TTS_ARAP temporary;
                         MatchingProcess: Codeunit "Matching Process";
+                        EODCount, CPMSCount: Integer;
+                        ConfirmMsg: Label 'Manual Match Summary:\EOD Records Selected: %1\CPMS Records Selected: %2\\Do you want to proceed with manual matching?';
                     begin
-                        if not Confirm('Do you want to proceed with Manual Matching?', true) then
-                            exit;
+                        // Selection Validation: Get selected records and validate
                         CurrPage.EOD.Page.GetSelectedRecords(TempEOD);
                         CurrPage.CPMS.Page.GetSelectedRecords(TempCPMS);
+                        
+                        EODCount := TempEOD.Count();
+                        CPMSCount := TempCPMS.Count();
+                        
+                        // Validation: Ensure both sides have selections
+                        if EODCount = 0 then
+                            Error('Please select at least one EOD record before manual matching.');
+                        if CPMSCount = 0 then
+                            Error('Please select at least one CPMS record before manual matching.');
+                        
+                        // Enhanced confirmation with selection counts
+                        if not Confirm(StrSubstNo(ConfirmMsg, EODCount, CPMSCount), true) then
+                            exit;
+
                         Clear(MatchingProcess);
                         MatchingProcess.SetMatchType(Enum::"Match Type"::Manual);
                         MatchingProcess.SetSelectedEOD(TempEOD);
@@ -87,11 +102,22 @@ page 85019 "EOD-CPMS Matching"
                         TempEOD: Record "EOD Staging" temporary;
                         TempCPMS: Record TTS_ARAP temporary;
                         MatchingProcess: Codeunit "Matching Process";
+                        EODCount, CPMSCount: Integer;
                     begin
-                        if not Confirm('Do you want to proceed with Force Matching?', true) then
-                            exit;
+                        // Selection Validation: Get selected records and validate
                         CurrPage.EOD.Page.GetSelectedRecords(TempEOD);
                         CurrPage.CPMS.Page.GetSelectedRecords(TempCPMS);
+                        
+                        EODCount := TempEOD.Count();
+                        CPMSCount := TempCPMS.Count();
+                        
+                        // Validation: Ensure both sides have selections
+                        if EODCount = 0 then
+                            Error('Please select at least one EOD record before force matching.');
+                        if CPMSCount = 0 then
+                            Error('Please select at least one CPMS record before force matching.');
+                        
+                        // Force match will show its own detailed confirmation
                         Clear(MatchingProcess);
                         MatchingProcess.ForceEODCPMSMatch(TempEOD, TempCPMS);
                     end;
