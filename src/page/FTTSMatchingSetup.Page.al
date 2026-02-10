@@ -252,7 +252,7 @@ page 85050 "FTTS Matching Setup"
         RulesExist := not MatchingRules.IsEmpty();
         
         if RulesExist then
-            RulesExistText := StrSubstNo('✓ Rules configured (%1 rule(s) found)', MatchingRules.Count())
+            RulesExistText := '✓ Rules configured'
         else
             RulesExistText := '✗ No rules configured - Please click "Setup/Update Matching Rules"';
     end;

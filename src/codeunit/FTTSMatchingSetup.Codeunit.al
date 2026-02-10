@@ -47,6 +47,7 @@ codeunit 85050 "FTTS Matching Setup"
         CPMSCondition := 'WHERE(Scheme=FILTER(FTTS),LOB Matching Status=FILTER(Unmatched|Error))';
 
         // Create or update the parent rule
+        // Field numbers: 10=PaymentReference (TTS_SAP), 17=ReceiptNumber (TTS_ARAP), 0=No Parent
         if MatchingRules.Get(RuleNo, MatchingRules."Matching Type"::"CPMS-LOB", 'FTTS', 10, 17, 0) then
             MatchingRules.Delete();
 
@@ -77,6 +78,7 @@ codeunit 85050 "FTTS Matching Setup"
         CPMSCondition := 'SORTING(ReceiptNumber) WHERE(Scheme=FILTER(FTTS),LOB Matching Status=FILTER(Unmatched|Error),Activity=FILTER(PAYMENT))';
 
         // Create or update the child rule
+        // Field numbers: 14=TestCostWithoutVat (TTS_SAP), 16=ReceiptAmount (TTS_ARAP), 0=No Parent
         if MatchingRules.Get(RuleNo, MatchingRules."Matching Type"::"CPMS-LOB", 'FTTS', 14, 16, 0) then
             MatchingRules.Delete();
 
