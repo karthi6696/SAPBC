@@ -943,8 +943,6 @@ codeunit 85000 "Matching Process"
     var
         TTSSAP: Record TTS_SAP;
         TTSARAP: Record TTS_ARAP;
-        TempSAP: Record TTS_SAP temporary;
-        TempARAP: Record TTS_ARAP temporary;
         MatchedReferences: Dictionary of [Text, Boolean];
         SAPAmounts: Dictionary of [Text, Decimal];
         ARAPAmounts: Dictionary of [Text, Decimal];
@@ -968,18 +966,8 @@ codeunit 85000 "Matching Process"
         Clear(ARAPAmounts);
         Clear(MatchedCount);
 
-        // Step 1: Filter TTS_SAP Records (FTTS scheme, Unmatched or Error)
-        TTSSAP.Reset();
-        TTSSAP.SetRange(Scheme, 'FTTS');
-        TTSSAP.SetFilter("Matching Status", '%1|%2', TTSSAP."Matching Status"::Unmatched, TTSSAP."Matching Status"::Error);
-
-        // Step 2: Filter TTS_ARAP Records (FTTS scheme, Unmatched or Error)
-        TTSARAP.Reset();
-        TTSARAP.SetRange(Scheme, 'FTTS');
-        TTSARAP.SetFilter("LOB Matching Status", '%1|%2', TTSARAP."LOB Matching Status"::Unmatched, TTSARAP."LOB Matching Status"::Error);
-
-        // Step 3: Compare PaymentReference and ReceiptNumber to create collection of matched references
-        // Iterate through TTS_ARAP and check if matching PaymentReference exists in TTS_SAP
+        // Step 1-3: Find matching references between TTS_SAP PaymentReference and TTS_ARAP ReceiptNumber
+        // where both have Scheme = FTTS and Status = Unmatched or Error
         TTSARAP.Reset();
         TTSARAP.SetRange(Scheme, 'FTTS');
         TTSARAP.SetFilter("LOB Matching Status", '%1|%2', TTSARAP."LOB Matching Status"::Unmatched, TTSARAP."LOB Matching Status"::Error);
@@ -995,8 +983,8 @@ codeunit 85000 "Matching Process"
                 end;
             until TTSARAP.Next() = 0;
 
-        // Step 6: Calculate sum of TestCostWithoutVat for TTS_SAP grouped by PaymentReference
-        // Apply additional filter: Activity = INVOICE
+        // Step 4-6: Calculate sum of TestCostWithoutVat for TTS_SAP grouped by PaymentReference
+        // Apply additional filters: Scheme = FTTS, Activity = INVOICE, Status = Unmatched or Error
         foreach PaymentRef in MatchedReferences.Keys do begin
             Clear(SAPAmount);
             TTSSAP.Reset();
@@ -1013,8 +1001,8 @@ codeunit 85000 "Matching Process"
                 SAPAmounts.Add(PaymentRef, SAPAmount);
         end;
 
-        // Step 7: Calculate sum of LineAmountNet for TTS_ARAP grouped by ReceiptNumber
-        // Apply additional filter: Activity = PAYMENT
+        // Step 5-7: Calculate sum of LineAmountNet for TTS_ARAP grouped by ReceiptNumber
+        // Apply additional filters: Scheme = FTTS, Activity = PAYMENT, Status = Unmatched or Error
         foreach ReceiptNum in MatchedReferences.Keys do begin
             Clear(ARAPAmount);
             TTSARAP.Reset();
@@ -1089,7 +1077,7 @@ codeunit 85000 "Matching Process"
         if TotalKeys > 0 then
             Progress.Close();
 
-        Message('ARAP Matching completed.\Matched Records: %1', MatchedCount);
+        Message('ARAP Matching completed successfully.\Matched reference groups: %1', MatchedCount);
     end;
 
 }
