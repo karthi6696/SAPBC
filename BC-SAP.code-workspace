@@ -1,0 +1,34 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"git.autofetch": true,
+		"git.confirmSync": false,
+		"CRS.OnSaveAlFileAction": "Reorganize",
+		"CRS.FileNamePattern": "<ObjectNameShort>.<ObjectTypeShortPascalCase>.al",
+		"CRS.FileNamePatternExtensions": "<ObjectNameShort>.<ObjectTypeShortPascalCase>.al",
+		"CRS.FileNamePatternPageCustomizations": "<ObjectNameShort>.<ObjectTypeShortPascalCase>.al",
+		"CRS.RemoveUnderscoreFromFilename": true,
+		"CRS.RemovePrefixFromFilename": true,
+		"CRS.ExtensionObjectNamePattern": null,
+		"workbench.startupEditor": "newUntitledFile",
+		"al.codeAnalyzers": [
+			"${CodeCop}",
+			"${PerTenantExtensionCop}",
+			"${UICop}"
+		],
+		"al.enableCodeAnalysis": true,
+		"editor.stickyScroll.enabled": true,
+		"al-test-runner.sendDebugTelemetry": false,
+		//"al.ruleSetPath": ".\\BIN_ruleset.json"
+	},
+	"extensions": {
+		"recommendations": [
+			"waldo.crs-al-language-extension",
+			"davidfeldhoff.al-codeactions"
+		]
+	}
+}

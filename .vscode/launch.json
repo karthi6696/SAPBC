@@ -1,0 +1,100 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Microsoft sandbox-Dev",
+            "request": "launch",
+            "type": "al",
+            "environmentType": "Sandbox",
+            "environmentName": "BC-SAP-DEV",
+            "startupObjectId": 672,
+            "startupObjectType": "Page",
+            "breakOnError": "All",
+            "launchBrowser": true,
+            "enableLongRunningSqlStatements": true,
+            "enableSqlInformationDebugger": true,
+            "tenant": "6c448d90-4ca1-4caf-ab59-0a2aa67d7801",
+            "schemaUpdateMode": "ForceSync"
+        },
+        {
+            "name": "Microsoft cloud Test",
+            "request": "launch",
+            "type": "al",
+            "environmentType": "Sandbox",
+            "environmentName": "BC-SAP-TEST",
+            "startupObjectId": 22,
+            "startupObjectType": "Page",
+            "breakOnError": "All",
+            "launchBrowser": true,
+            "enableLongRunningSqlStatements": true,
+            "enableSqlInformationDebugger": true,
+            "tenant": "6c448d90-4ca1-4caf-ab59-0a2aa67d7801",
+            "schemaUpdateMode": "ForceSync"
+        },
+        {
+            "name": "Microsoft cloud UAT",
+            "request": "launch",
+            "type": "al",
+            "environmentType": "Sandbox",
+            "environmentName": "BC-SAP-UAT",
+            "startupObjectId": 22,
+            "startupObjectType": "Page",
+            "breakOnError": "All",
+            "launchBrowser": true,
+            "enableLongRunningSqlStatements": true,
+            "enableSqlInformationDebugger": true,
+            "tenant": "6c448d90-4ca1-4caf-ab59-0a2aa67d7801",
+            "schemaUpdateMode": "Synchronize"
+        },
+        {
+            "name": "Attach: Microsoft cloud web",
+            "type": "al",
+            "request": "attach",
+            "environmentType": "Sandbox",
+            "environmentName": "BC-SAP-TEST",
+            "breakOnError": "All",
+            "breakOnRecordWrite": "None",
+            "enableSqlInformationDebugger": true,
+            "enableLongRunningSqlStatements": true,
+            "longRunningSqlStatementsThreshold": 500,
+            "userId": "BC-SAP BC ACCESS",
+            "numberOfSqlStatements": 10,
+            "breakOnNext": "WebServiceClient",
+            "tenant": "6c448d90-4ca1-4caf-ab59-0a2aa67d7801"
+        },
+        {
+            "name": "My SP Sandbox",
+            "request": "launch",
+            "type": "al",
+            "environmentType": "Sandbox",
+            "environmentName": "Sharepoint",
+            "startupObjectId": 22,
+            "startupObjectType": "Page",
+            "breakOnError": "All",
+            "launchBrowser": true,
+            "enableLongRunningSqlStatements": true,
+            "enableSqlInformationDebugger": true,
+            "tenant": "8aec20c9-30ad-4331-8f24-9ce62c186849",
+            "schemaUpdateMode": "ForceSync"
+        },
+        {
+            "name": "AL: Generated Attach request",
+            "request": "attach",
+            "type": "al",
+            "environmentType": "Sandbox",
+            "environmentName": "BC-SAP-DEV",
+            "sessionId": 198672,
+            "breakOnNext": "WebClient",
+            "breakOnError": "ExcludeTry",
+            "tenant": "6c448d90-4ca1-4caf-ab59-0a2aa67d7801"
+        },
+        {
+            "name": "AL: Generated Download Symbols request",
+            "request": "launch",
+            "type": "al",
+            "environmentType": "Sandbox",
+            "environmentName": "BC-SAP-DEV",
+            "tenant": "6c448d90-4ca1-4caf-ab59-0a2aa67d7801"
+        }
+    ]
+}
