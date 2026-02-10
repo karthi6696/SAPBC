@@ -1043,12 +1043,10 @@ codeunit 85000 "Matching Process"
                     Progress.Update(1, Counter);
                 
                 if TempSAP.PaymentReference <> '' then begin
-                    if SAPAmounts.ContainsKey(TempSAP.PaymentReference) then begin
-                        SAPAmounts.Get(TempSAP.PaymentReference, SAPAmount);
-                        SAPAmount += TempSAP.TestCostWithoutVat;
-                        SAPAmounts.Set(TempSAP.PaymentReference, SAPAmount);
-                    end else
-                        SAPAmounts.Add(TempSAP.PaymentReference, TempSAP.TestCostWithoutVat);
+                    if not SAPAmounts.Get(TempSAP.PaymentReference, SAPAmount) then
+                        SAPAmount := 0;
+                    SAPAmount += TempSAP.TestCostWithoutVat;
+                    SAPAmounts.Set(TempSAP.PaymentReference, SAPAmount);
                 end;
             until TempSAP.Next() = 0;
         
@@ -1056,7 +1054,6 @@ codeunit 85000 "Matching Process"
             Progress.Close();
 
         // Performance Step 4: Calculate ARAP amounts (Activity = PAYMENT) - single pass through temp table
-        // Only process receipt numbers that exist in SAP payment references for efficiency
         Clear(Counter);
         TempARAP.Reset();
         TempARAP.SetRange(Activity, 'PAYMENT');
@@ -1071,14 +1068,11 @@ codeunit 85000 "Matching Process"
                 if (TotalRecords > 100) and (Counter mod 100 = 0) then
                     Progress.Update(1, Counter);
                 
-                // Performance: Only process if matching SAP payment reference exists
-                if (TempARAP.ReceiptNumber <> '') and SAPPaymentRefs.ContainsKey(TempARAP.ReceiptNumber) then begin
-                    if ARAPAmounts.ContainsKey(TempARAP.ReceiptNumber) then begin
-                        ARAPAmounts.Get(TempARAP.ReceiptNumber, ARAPAmount);
-                        ARAPAmount += TempARAP.LineAmountNet;
-                        ARAPAmounts.Set(TempARAP.ReceiptNumber, ARAPAmount);
-                    end else
-                        ARAPAmounts.Add(TempARAP.ReceiptNumber, TempARAP.LineAmountNet);
+                if TempARAP.ReceiptNumber <> '' then begin
+                    if not ARAPAmounts.Get(TempARAP.ReceiptNumber, ARAPAmount) then
+                        ARAPAmount := 0;
+                    ARAPAmount += TempARAP.LineAmountNet;
+                    ARAPAmounts.Set(TempARAP.ReceiptNumber, ARAPAmount);
                 end;
             until TempARAP.Next() = 0;
         
