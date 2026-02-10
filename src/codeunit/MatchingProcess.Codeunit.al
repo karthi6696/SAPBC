@@ -939,4 +939,157 @@ codeunit 85000 "Matching Process"
         Message('Force match completed successfully.\EOD Records: %1\CPMS Records: %2\Match ID: %3', EODCount, CPMSCount, MatchID);
     end;
 
+    procedure MatchARAPData()
+    var
+        TTSSAP: Record TTS_SAP;
+        TTSARAP: Record TTS_ARAP;
+        TempSAP: Record TTS_SAP temporary;
+        TempARAP: Record TTS_ARAP temporary;
+        MatchedReferences: Dictionary of [Text, Boolean];
+        SAPAmounts: Dictionary of [Text, Decimal];
+        ARAPAmounts: Dictionary of [Text, Decimal];
+        PaymentRef: Text[100];
+        ReceiptNum: Text[100];
+        SAPAmount: Decimal;
+        ARAPAmount: Decimal;
+        NewMatchingID: Code[20];
+        MatchedCount: Integer;
+        Progress: Dialog;
+        Counter: Integer;
+        TotalKeys: Integer;
+        ProgressMsg: Label 'Matching TTS ARAP Records......#1######################\';
+    begin
+        // Validate GL Setup
+        GLSetup.GetRecordOnce();
+        GLSetup.TestField("LOB-CPMS Matching No. Series");
+
+        Clear(MatchedReferences);
+        Clear(SAPAmounts);
+        Clear(ARAPAmounts);
+        Clear(MatchedCount);
+
+        // Step 1: Filter TTS_SAP Records (FTTS scheme, Unmatched or Error)
+        TTSSAP.Reset();
+        TTSSAP.SetRange(Scheme, 'FTTS');
+        TTSSAP.SetFilter("Matching Status", '%1|%2', TTSSAP."Matching Status"::Unmatched, TTSSAP."Matching Status"::Error);
+
+        // Step 2: Filter TTS_ARAP Records (FTTS scheme, Unmatched or Error)
+        TTSARAP.Reset();
+        TTSARAP.SetRange(Scheme, 'FTTS');
+        TTSARAP.SetFilter("LOB Matching Status", '%1|%2', TTSARAP."LOB Matching Status"::Unmatched, TTSARAP."LOB Matching Status"::Error);
+
+        // Step 3: Compare PaymentReference and ReceiptNumber to create collection of matched references
+        // Iterate through TTS_ARAP and check if matching PaymentReference exists in TTS_SAP
+        TTSARAP.Reset();
+        TTSARAP.SetRange(Scheme, 'FTTS');
+        TTSARAP.SetFilter("LOB Matching Status", '%1|%2', TTSARAP."LOB Matching Status"::Unmatched, TTSARAP."LOB Matching Status"::Error);
+        if TTSARAP.FindSet() then
+            repeat
+                TTSSAP.Reset();
+                TTSSAP.SetRange(Scheme, 'FTTS');
+                TTSSAP.SetFilter("Matching Status", '%1|%2', TTSSAP."Matching Status"::Unmatched, TTSSAP."Matching Status"::Error);
+                TTSSAP.SetRange(PaymentReference, TTSARAP.ReceiptNumber);
+                if TTSSAP.FindFirst() then begin
+                    if not MatchedReferences.ContainsKey(TTSARAP.ReceiptNumber) then
+                        MatchedReferences.Add(TTSARAP.ReceiptNumber, true);
+                end;
+            until TTSARAP.Next() = 0;
+
+        // Step 6: Calculate sum of TestCostWithoutVat for TTS_SAP grouped by PaymentReference
+        // Apply additional filter: Activity = INVOICE
+        foreach PaymentRef in MatchedReferences.Keys do begin
+            Clear(SAPAmount);
+            TTSSAP.Reset();
+            TTSSAP.SetRange(Scheme, 'FTTS');
+            TTSSAP.SetRange(Activity, 'INVOICE');
+            TTSSAP.SetFilter("Matching Status", '%1|%2', TTSSAP."Matching Status"::Unmatched, TTSSAP."Matching Status"::Error);
+            TTSSAP.SetRange(PaymentReference, PaymentRef);
+            if TTSSAP.FindSet() then
+                repeat
+                    SAPAmount += TTSSAP.TestCostWithoutVat;
+                until TTSSAP.Next() = 0;
+            
+            if not SAPAmounts.ContainsKey(PaymentRef) then
+                SAPAmounts.Add(PaymentRef, SAPAmount);
+        end;
+
+        // Step 7: Calculate sum of LineAmountNet for TTS_ARAP grouped by ReceiptNumber
+        // Apply additional filter: Activity = PAYMENT
+        foreach ReceiptNum in MatchedReferences.Keys do begin
+            Clear(ARAPAmount);
+            TTSARAP.Reset();
+            TTSARAP.SetRange(Scheme, 'FTTS');
+            TTSARAP.SetRange(Activity, 'PAYMENT');
+            TTSARAP.SetFilter("LOB Matching Status", '%1|%2', TTSARAP."LOB Matching Status"::Unmatched, TTSARAP."LOB Matching Status"::Error);
+            TTSARAP.SetRange(ReceiptNumber, ReceiptNum);
+            if TTSARAP.FindSet() then
+                repeat
+                    ARAPAmount += TTSARAP.LineAmountNet;
+                until TTSARAP.Next() = 0;
+            
+            if not ARAPAmounts.ContainsKey(ReceiptNum) then
+                ARAPAmounts.Add(ReceiptNum, ARAPAmount);
+        end;
+
+        // Step 8: Compare amounts and mark as matched
+        TotalKeys := SAPAmounts.Keys.Count();
+        if TotalKeys > 0 then
+            Progress.Open(ProgressMsg);
+
+        foreach PaymentRef in SAPAmounts.Keys do begin
+            Counter += 1;
+            if (TotalKeys > 0) and (Counter mod 10 = 0) then
+                Progress.Update(1, Counter);
+
+            if SAPAmounts.Get(PaymentRef, SAPAmount) and ARAPAmounts.ContainsKey(PaymentRef) then begin
+                ARAPAmounts.Get(PaymentRef, ARAPAmount);
+                
+                // Compare amounts - if equal, mark as matched
+                if SAPAmount = ARAPAmount then begin
+                    // Generate new matching ID
+                    NewMatchingID := Noseries.GetNextNo(GLSetup."LOB-CPMS Matching No. Series");
+                    
+                    // Update TTS_SAP records
+                    TTSSAP.Reset();
+                    TTSSAP.SetRange(Scheme, 'FTTS');
+                    TTSSAP.SetRange(Activity, 'INVOICE');
+                    TTSSAP.SetFilter("Matching Status", '%1|%2', TTSSAP."Matching Status"::Unmatched, TTSSAP."Matching Status"::Error);
+                    TTSSAP.SetRange(PaymentReference, PaymentRef);
+                    if TTSSAP.FindSet() then
+                        repeat
+                            TTSSAP."Matching Status" := TTSSAP."Matching Status"::Matched;
+                            TTSSAP."Matching ID" := NewMatchingID;
+                            TTSSAP."Matching Processed Date Time" := CurrentDateTime;
+                            TTSSAP."Matched By" := UserId;
+                            TTSSAP."Match Type" := TTSSAP."Match Type"::Automatic;
+                            TTSSAP.Modify();
+                        until TTSSAP.Next() = 0;
+                    
+                    // Update TTS_ARAP records
+                    TTSARAP.Reset();
+                    TTSARAP.SetRange(Scheme, 'FTTS');
+                    TTSARAP.SetRange(Activity, 'PAYMENT');
+                    TTSARAP.SetFilter("LOB Matching Status", '%1|%2', TTSARAP."LOB Matching Status"::Unmatched, TTSARAP."LOB Matching Status"::Error);
+                    TTSARAP.SetRange(ReceiptNumber, PaymentRef);
+                    if TTSARAP.FindSet() then
+                        repeat
+                            TTSARAP."LOB Matching Status" := TTSARAP."LOB Matching Status"::Matched;
+                            TTSARAP."LOB Matching ID" := NewMatchingID;
+                            TTSARAP."LOB Processed Date Time" := CurrentDateTime;
+                            TTSARAP."LOB Matched By" := UserId;
+                            TTSARAP."LOB Match Type" := TTSARAP."LOB Match Type"::Automatic;
+                            TTSARAP.Modify();
+                        until TTSARAP.Next() = 0;
+                    
+                    MatchedCount += 1;
+                end;
+            end;
+        end;
+
+        if TotalKeys > 0 then
+            Progress.Close();
+
+        Message('ARAP Matching completed.\Matched Records: %1', MatchedCount);
+    end;
+
 }
