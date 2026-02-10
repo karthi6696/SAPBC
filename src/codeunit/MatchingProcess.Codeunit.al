@@ -227,17 +227,34 @@ codeunit 85000 "Matching Process"
         LOB: Record TTS_SAP;
         Progress: Dialog;
         Counter: Integer;
+        TotalRecords: Integer;
         ProgressMsg: Label 'Filtering LOB Data......#1######################\';
     begin
         Clear(Counter);
-        Progress.Open(ProgressMsg);
+        // Performance: Count records first to enable batched progress updates
+        if MatchType = MatchType::Manual then begin
+            SelectedLOB.Reset();
+            SelectedLOB.SetView(pMatchingRules."LOB Condition");
+            TotalRecords := SelectedLOB.Count();
+        end else begin
+            LOB.Reset();
+            LOB.SetView(pMatchingRules."LOB Condition");
+            TotalRecords := LOB.Count();
+        end;
+
+        // Only show progress for large datasets
+        if TotalRecords > 100 then
+            Progress.Open(ProgressMsg);
+
         if MatchType = MatchType::Manual then begin
             SelectedLOB.Reset();
             SelectedLOB.SetView(pMatchingRules."LOB Condition");
             if SelectedLOB.FindSet() then
                 repeat
                     Counter += 1;
-                    Progress.Update(1, Counter);
+                    // Performance: Update progress every 100 records instead of every record
+                    if (TotalRecords > 100) and (Counter mod 100 = 0) then
+                        Progress.Update(1, Counter);
                     LOBTemp.Init();
                     LOBTemp := SelectedLOB;
                     LOBTemp.Insert();
@@ -248,13 +265,16 @@ codeunit 85000 "Matching Process"
             if LOB.FindSet() then
                 repeat
                     Counter += 1;
-                    Progress.Update(1, Counter);
+                    // Performance: Update progress every 100 records instead of every record
+                    if (TotalRecords > 100) and (Counter mod 100 = 0) then
+                        Progress.Update(1, Counter);
                     LOBTemp.Init();
                     LOBTemp := LOB;
                     LOBTemp.Insert();
                 until lob.Next() = 0;
         end;
-        Progress.Close();
+        if TotalRecords > 100 then
+            Progress.Close();
     end;
 
     local procedure InsertEODTempData(var EODTemp: Record "EOD Staging" temporary; var pMatchingRules: Record "Matching Rules")
@@ -262,17 +282,34 @@ codeunit 85000 "Matching Process"
         EOD: Record "EOD Staging";
         Progress: Dialog;
         Counter: Integer;
+        TotalRecords: Integer;
         ProgressMsg: Label 'Filtering EOD Data......#1######################\';
     begin
         Clear(Counter);
-        Progress.Open(ProgressMsg);
+        // Performance: Count records first to enable batched progress updates
+        if MatchType = MatchType::Manual then begin
+            SelectedEOD.Reset();
+            SelectedEOD.SetView(pMatchingRules."EOD Condition");
+            TotalRecords := SelectedEOD.Count();
+        end else begin
+            EOD.Reset();
+            EOD.SetView(pMatchingRules."EOD Condition");
+            TotalRecords := EOD.Count();
+        end;
+
+        // Only show progress for large datasets
+        if TotalRecords > 100 then
+            Progress.Open(ProgressMsg);
+
         if MatchType = MatchType::Manual then begin
             SelectedEOD.Reset();
             SelectedEOD.SetView(pMatchingRules."EOD Condition");
             if SelectedEOD.FindSet() then
                 repeat
                     Counter += 1;
-                    Progress.Update(1, Counter);
+                    // Performance: Update progress every 100 records instead of every record
+                    if (TotalRecords > 100) and (Counter mod 100 = 0) then
+                        Progress.Update(1, Counter);
                     EODTemp.Init();
                     EODTemp := SelectedEOD;
                     EODTemp.Insert();
@@ -283,13 +320,16 @@ codeunit 85000 "Matching Process"
             if EOD.FindSet() then
                 repeat
                     Counter += 1;
-                    Progress.Update(1, Counter);
+                    // Performance: Update progress every 100 records instead of every record
+                    if (TotalRecords > 100) and (Counter mod 100 = 0) then
+                        Progress.Update(1, Counter);
                     EODTemp.Init();
                     EODTemp := EOD;
                     EODTemp.Insert();
                 until EOD.Next() = 0;
         end;
-        Progress.Close();
+        if TotalRecords > 100 then
+            Progress.Close();
     end;
 
     local procedure InsertCPMSTempData(var CPMSTemp: Record TTS_ARAP temporary; var pMatchingRules: Record "Matching Rules")
@@ -297,17 +337,34 @@ codeunit 85000 "Matching Process"
         CPMS: Record TTS_ARAP;
         Progress: Dialog;
         Counter: Integer;
+        TotalRecords: Integer;
         ProgressMsg: Label 'Filtering CPMS Data......#1######################\';
     begin
         Clear(Counter);
-        Progress.Open(ProgressMsg);
+        // Performance: Count records first to enable batched progress updates
+        if MatchType = MatchType::Manual then begin
+            SelectedCPMS.Reset();
+            SelectedCPMS.SetView(pMatchingRules."CPMS Condition");
+            TotalRecords := SelectedCPMS.Count();
+        end else begin
+            CPMS.Reset();
+            CPMS.SetView(pMatchingRules."CPMS Condition");
+            TotalRecords := CPMS.Count();
+        end;
+
+        // Only show progress for large datasets
+        if TotalRecords > 100 then
+            Progress.Open(ProgressMsg);
+
         if MatchType = MatchType::Manual then begin
             SelectedCPMS.Reset();
             SelectedCPMS.SetView(pMatchingRules."CPMS Condition");
             if SelectedCPMS.FindSet() then
                 repeat
                     Counter += 1;
-                    Progress.Update(1, Counter);
+                    // Performance: Update progress every 100 records instead of every record
+                    if (TotalRecords > 100) and (Counter mod 100 = 0) then
+                        Progress.Update(1, Counter);
                     CPMSTemp.Init();
                     CPMSTemp := SelectedCPMS;
                     CPMSTemp.Insert();
@@ -318,13 +375,16 @@ codeunit 85000 "Matching Process"
             if CPMS.FindSet() then
                 repeat
                     Counter += 1;
-                    Progress.Update(1, Counter);
+                    // Performance: Update progress every 100 records instead of every record
+                    if (TotalRecords > 100) and (Counter mod 100 = 0) then
+                        Progress.Update(1, Counter);
                     CPMSTemp.Init();
                     CPMSTemp := CPMS;
                     CPMSTemp.Insert();
                 until CPMS.Next() = 0;
         end;
-        Progress.Close();
+        if TotalRecords > 100 then
+            Progress.Close();
     end;
 
     local procedure ResetLOBRecordRefs()
@@ -353,19 +413,31 @@ codeunit 85000 "Matching Process"
     var
         Progress: Dialog;
         Counter: Integer;
+        TotalRecords: Integer;
+        ProcessedKeys: Dictionary of [Text, Boolean];
         ProgressMsg: Label 'Applying Final Condition to LOB-CPMS Data......#1######################\';
     begin
-        Progress.Open(ProgressMsg);
-
         Clear(Counter);
         Clear(LOBEntry);
         Clear(LOBMatchingRecords);
+        Clear(ProcessedKeys);
+
+        // Performance: Count total records for batched progress updates
+        TotalRecords := LOBRecordRef.Count();
+        if TotalRecords > 100 then
+            Progress.Open(ProgressMsg);
+
         if LOBRecordRef.FindSet() then
             repeat
                 Counter += 1;
-                Progress.Update(1, Counter);
+                // Performance: Update progress every 100 records instead of every record
+                if (TotalRecords > 100) and (Counter mod 100 = 0) then
+                    Progress.Update(1, Counter);
+
                 ParentMatchField := Format(LOBRecordRef.Field(ParentMatchingRule."LOB Field No.").Value);
-                if StoreParentKey <> ParentMatchField then begin
+                
+                // Performance: Only calculate sum for each unique parent key once
+                if not ProcessedKeys.ContainsKey(ParentMatchField) then begin
                     Clear(SumSubMatchField);
                     Clear(SubMatchField);
                     LOBRecordRef2.Field(ParentMatchingRule."LOB Field No.").SetFilter(ParentMatchField);
@@ -375,29 +447,45 @@ codeunit 85000 "Matching Process"
                             SumSubMatchField += SubMatchField;
                         until LOBRecordRef2.Next() = 0;
                     LOBMatchingRecords.Add(ParentMatchField, SumSubMatchField);
+                    ProcessedKeys.Add(ParentMatchField, true);
                 end;
-                StoreParentKey := Format(LOBRecordRef.Field(ParentMatchingRule."LOB Field No.").Value);
+                
                 LOBEntry.Append(Format(LOBRecordRef.Field(1).Value) + '|');
             until LOBRecordRef.Next() = 0;
-        Progress.Close();
+
+        if TotalRecords > 100 then
+            Progress.Close();
     end;
 
     local procedure FilterEODMatchingData()
     var
         Progress: Dialog;
         Counter: Integer;
+        TotalRecords: Integer;
+        ProcessedKeys: Dictionary of [Text, Boolean];
         ProgressMsg: Label 'Applying Final Condition to EOD-CPMS Data......#1######################\';
     begin
-        Progress.Open(ProgressMsg);
         Clear(Counter);
         Clear(EODMatchingRecords);
         Clear(EODEntryNo);
+        Clear(ProcessedKeys);
+
+        // Performance: Count total records for batched progress updates
+        TotalRecords := EODRecordRef.Count();
+        if TotalRecords > 100 then
+            Progress.Open(ProgressMsg);
+
         if EODRecordRef.FindSet() then
             repeat
                 Counter += 1;
-                Progress.Update(1, Counter);
+                // Performance: Update progress every 100 records instead of every record
+                if (TotalRecords > 100) and (Counter mod 100 = 0) then
+                    Progress.Update(1, Counter);
+
                 ParentMatchField := Format(EODRecordRef.Field(ParentMatchingRule."EOD Field No.").Value);
-                if StoreParentKey <> ParentMatchField then begin
+                
+                // Performance: Only calculate sum for each unique parent key once
+                if not ProcessedKeys.ContainsKey(ParentMatchField) then begin
                     Clear(SumSubMatchField);
                     Clear(SubMatchField);
                     EODRecordRef2.Field(ParentMatchingRule."EOD Field No.").SetFilter(ParentMatchField);
@@ -407,32 +495,48 @@ codeunit 85000 "Matching Process"
                             SumSubMatchField += Abs(SubMatchField);
                         until EODRecordRef2.Next() = 0;
                     EODMatchingRecords.Add(ParentMatchField, SumSubMatchField);
+                    ProcessedKeys.Add(ParentMatchField, true);
                 end;
-                StoreParentKey := Format(EODRecordRef.Field(ParentMatchingRule."EOD Field No.").Value);
+                
                 EODEntryNo.Append(Format(EODRecordRef.Field(1).Value) + '|');
             until EODRecordRef.Next() = 0;
-        Progress.Close();
+
+        if TotalRecords > 100 then
+            Progress.Close();
     end;
 
     local procedure FilterCPMSMatchingData()
     var
         Progress: Dialog;
         Counter: Integer;
+        TotalRecords: Integer;
+        ProcessedKeys: Dictionary of [Text, Boolean];
         ProgressMsg: Label 'Applying Final Condition to CPMS Data......#1######################\';
         FormatDashing: Text;
     begin
-        Progress.Open(ProgressMsg);
         Clear(Counter);
         Clear(CPMSEntryNo);
         Clear(CPMSMatchingRecords);
         Clear(CPMSMatchingKeys);
         Clear(FormatDashing);
+        Clear(ProcessedKeys);
+
+        // Performance: Count total records for batched progress updates
+        TotalRecords := CPMSRecordRef.Count();
+        if TotalRecords > 100 then
+            Progress.Open(ProgressMsg);
+
         if CPMSRecordRef.FindSet() then
             repeat
                 Counter += 1;
-                Progress.Update(1, Counter);
+                // Performance: Update progress every 100 records instead of every record
+                if (TotalRecords > 100) and (Counter mod 100 = 0) then
+                    Progress.Update(1, Counter);
+
                 ParentMatchField := Format(CPMSRecordRef.Field(ParentMatchingRule."CPMS Field No.").Value);
-                if StoreParentKey <> ParentMatchField then begin
+                
+                // Performance: Only calculate sum for each unique parent key once
+                if not ProcessedKeys.ContainsKey(ParentMatchField) then begin
                     Clear(SumSubMatchField);
                     Clear(SubMatchField);
                     Clear(FormatDashing);
@@ -448,157 +552,227 @@ codeunit 85000 "Matching Process"
                         CPMSMatchingRecords.Add(FormatDashing.Replace('-', ''), SumSubMatchField);
                     end else
                         CPMSMatchingRecords.Add(ParentMatchField, SubMatchField);
+                    ProcessedKeys.Add(ParentMatchField, true);
                 end;
-                StoreParentKey := Format(CPMSRecordRef.Field(ParentMatchingRule."CPMS Field No.").Value);
+                
                 CPMSEntryNo.Append(Format(CPMSRecordRef.Field(1).Value) + '|');
             until CPMSRecordRef.Next() = 0;
-        Progress.Close();
+
+        if TotalRecords > 100 then
+            Progress.Close();
     end;
 
     local procedure MatchLOBCPMSRecords()
     var
         Progress: Dialog;
         Counter: Integer;
+        TotalKeys: Integer;
         ProgressMsg: Label 'Matching Records......#1######################\';
     begin
         Clear(Counter);
-        Progress.Open(ProgressMsg);
-        foreach Record in LOBMatchingRecords.Keys do
-            if LOBMatchingRecords.Get(Record, LOBMatchingValue) and CPMSMatchingRecords.Get(Record, CPMSMatching) then
+        
+        // Performance: Count total keys for progress updates
+        TotalKeys := LOBMatchingRecords.Keys.Count();
+        if TotalKeys > 100 then
+            Progress.Open(ProgressMsg);
+
+        // Performance: Use ContainsKey before Get to avoid exceptions and improve lookup
+        foreach Record in LOBMatchingRecords.Keys do begin
+            Counter += 1;
+            // Performance: Update progress every 100 records instead of every record
+            if (TotalKeys > 100) and (Counter mod 100 = 0) then
+                Progress.Update(1, Counter);
+
+            if LOBMatchingRecords.Get(Record, LOBMatchingValue) and CPMSMatchingRecords.ContainsKey(Record) then begin
+                CPMSMatchingRecords.Get(Record, CPMSMatching);
                 if LOBMatchingValue = CPMSMatching then begin
                     MatchingOption := MatchingOption::Matched;
                     MatchingId := Noseries.GetNextNo(GLSetup."LOB-CPMS Matching No. Series");
                     MatchMsg := StrSubstNo(SuccessLbl, MatchingRules."Matching Rule No.");
-                    //  end;
-                    // else begin
-                    //     MatchingOption := MatchingOption::Error;
-                    //     MatchingId := Noseries.GetNextNo(GLSetup."LOB-CPMS Error No. Series");
-                    //     MatchMsg := StrSubstNo(ErrLbl, MatchingRules."LOB Field Name", MatchingRules."CPMS Field Name", MatchingRules."Matching Type", MatchingRules."Matching Rule No.");
-                    // end;
-                    Counter += 1;
-                    Progress.Update(1, Counter);
                     UpdateLOBMatchedRecords();
                     UpdateCPMSLOBMatchedRecords();
-                    // if MatchingOption = MatchingOption::Matched then
-                    //     exit;
                 end;
+            end;
+        end;
+
+        if TotalKeys > 100 then
+            Progress.Close();
     end;
 
     local procedure MatchEODCPMSRecords()
     var
         Progress: Dialog;
         Counter: Integer;
+        TotalKeys: Integer;
         ProgressMsg: Label 'Matching Records......#1######################\';
     begin
         Clear(Counter);
-        Progress.Open(ProgressMsg);
-        foreach Record in EODMatchingRecords.Keys do
-            if EODMatchingRecords.Get(Record, EODMatchingValue) and CPMSMatchingRecords.Get(Record, CPMSMatching) then
+        
+        // Performance: Count total keys for progress updates
+        TotalKeys := EODMatchingRecords.Keys.Count();
+        if TotalKeys > 100 then
+            Progress.Open(ProgressMsg);
+
+        // Performance: Use ContainsKey before Get to avoid exceptions and improve lookup
+        foreach Record in EODMatchingRecords.Keys do begin
+            Counter += 1;
+            // Performance: Update progress every 100 records instead of every record
+            if (TotalKeys > 100) and (Counter mod 100 = 0) then
+                Progress.Update(1, Counter);
+
+            if EODMatchingRecords.Get(Record, EODMatchingValue) and CPMSMatchingRecords.ContainsKey(Record) then begin
+                CPMSMatchingRecords.Get(Record, CPMSMatching);
                 if EODMatchingValue = CPMSMatching then begin
                     MatchingOption := MatchingOption::Matched;
                     MatchingId := Noseries.GetNextNo(GLSetup."EOD-CPMS Matching No. Series");
                     MatchMsg := StrSubstNo(SuccessLbl, MatchingRules."Matching Rule No.");
-                    //end
-                    //  else begin
-                    //     MatchingOption := MatchingOption::Error;
-                    //     MatchingId := Noseries.GetNextNo(GLSetup."EOD-CPMS Error No. Series");
-                    //     MatchMsg := StrSubstNo(ErrLbl, MatchingRules."EOD Field Name", MatchingRules."CPMS Field Name", MatchingRules."Matching Type", MatchingRules."Matching Rule No.");
-                    // end;
-
-                    Counter += 1;
-                    Progress.Update(1, Counter);
                     UpdateEODMatchedRecords();
                     UpdateCPMSEODMatchedRecords();
                 end;
-        // if MatchingOption = MatchingOption::Matched then
-        //     exit;
+            end;
+        end;
+
+        if TotalKeys > 100 then
+            Progress.Close();
     end;
 
     local procedure UpdateLOBMatchedRecords()
+    var
+        TempRecordRef: RecordRef;
+        ExistingMatchType: Enum "Match Type";
+        ExistingMatchTypeValue: Integer;
     begin
-        Clear(LOBRecordRef);
-        LOBRecordRef.Open(Database::TTS_SAP);
-        LOBRecordRef.SetView(LOBTemp.GetView());
-        LOBRecordRef.Field(ParentMatchingRule."LOB Field No.").SetFilter(Record);
+        // Performance: Use a separate RecordRef to avoid reopening LOBRecordRef
+        TempRecordRef.Open(Database::TTS_SAP);
+        TempRecordRef.SetView(LOBTemp.GetView());
+        TempRecordRef.Field(ParentMatchingRule."LOB Field No.").SetFilter(Record);
         if MatchType = MatchType::Manual then
-            LOBRecordRef.Field(1).SetFilter(CopyStr(LOBEntry.ToText(), 1, LOBEntry.Length - 1));
-        if LOBRecordRef.FindSet() then
+            TempRecordRef.Field(1).SetFilter(CopyStr(LOBEntry.ToText(), 1, LOBEntry.Length - 1));
+        if TempRecordRef.FindSet() then
             repeat
-                LOBRecordRef.Field(85005).Value := MatchingOption;
-                LOBRecordRef.Field(85006).Value := MatchingId;
-                LOBRecordRef.Field(85007).Value := CurrentDateTime;
-                LOBRecordRef.Field(85008).Value := MatchingRules."Matching Rule No.";
-                LOBRecordRef.Field(85009).Value := MatchMsg;
-                LOBRecordRef.Field(41).Value := UserId;
-                LOBRecordRef.Field(42).Value := MatchType;
-                LOBRecordRef.Modify();
-            until LOBRecordRef.Next() = 0;
+                // Match Type Priority: Check existing match type (Force > Manual > Automatic)
+                // Only update if current match type is higher or equal priority
+                ExistingMatchTypeValue := TempRecordRef.Field(42).Value;
+                ExistingMatchType := Enum::"Match Type".FromInteger(ExistingMatchTypeValue);
+                
+                // Only update if new match type has higher or equal priority
+                if MatchType >= ExistingMatchType then begin
+                    TempRecordRef.Field(85005).Value := MatchingOption;
+                    TempRecordRef.Field(85006).Value := MatchingId;
+                    TempRecordRef.Field(85007).Value := CurrentDateTime;
+                    TempRecordRef.Field(85008).Value := MatchingRules."Matching Rule No.";
+                    TempRecordRef.Field(85009).Value := MatchMsg;
+                    TempRecordRef.Field(41).Value := UserId;
+                    TempRecordRef.Field(42).Value := MatchType;
+                    TempRecordRef.Modify();
+                end;
+            until TempRecordRef.Next() = 0;
+        TempRecordRef.Close();
     end;
 
     local procedure UpdateEODMatchedRecords()
+    var
+        TempRecordRef: RecordRef;
+        ExistingMatchType: Enum "Match Type";
+        ExistingMatchTypeValue: Integer;
     begin
-        Clear(EODRecordRef);
-        EODRecordRef.Open(Database::"EOD Staging");
-        EODRecordRef.SetView(EODTemp.GetView());
-        EODRecordRef.Field(ParentMatchingRule."EOD Field No.").SetFilter(Record);
+        // Performance: Use a separate RecordRef to avoid reopening EODRecordRef
+        TempRecordRef.Open(Database::"EOD Staging");
+        TempRecordRef.SetView(EODTemp.GetView());
+        TempRecordRef.Field(ParentMatchingRule."EOD Field No.").SetFilter(Record);
         if MatchType = MatchType::Manual then
-            EODRecordRef.Field(1).SetFilter(CopyStr(EODEntryNo.ToText(), 1, EODEntryNo.Length - 1));
-        if EODRecordRef.FindSet() then
+            TempRecordRef.Field(1).SetFilter(CopyStr(EODEntryNo.ToText(), 1, EODEntryNo.Length - 1));
+        if TempRecordRef.FindSet() then
             repeat
-                EODRecordRef.Field(31).Value := MatchingOption;
-                EODRecordRef.Field(32).Value := MatchingId;
-                EODRecordRef.Field(33).Value := CurrentDateTime;
-                EODRecordRef.Field(34).Value := MatchingRules."Matching Rule No.";
-                EODRecordRef.Field(35).Value := MatchMsg;
-                EODRecordRef.Field(36).Value := UserId;
-                EODRecordRef.Field(37).Value := MatchType;
-                EODRecordRef.Modify();
-            until EODRecordRef.Next() = 0;
+                // Match Type Priority: Check existing match type (Force > Manual > Automatic)
+                // Only update if current match type is higher or equal priority
+                ExistingMatchTypeValue := TempRecordRef.Field(37).Value;
+                ExistingMatchType := Enum::"Match Type".FromInteger(ExistingMatchTypeValue);
+                
+                // Only update if new match type has higher or equal priority
+                if MatchType >= ExistingMatchType then begin
+                    TempRecordRef.Field(31).Value := MatchingOption;
+                    TempRecordRef.Field(32).Value := MatchingId;
+                    TempRecordRef.Field(33).Value := CurrentDateTime;
+                    TempRecordRef.Field(34).Value := MatchingRules."Matching Rule No.";
+                    TempRecordRef.Field(35).Value := MatchMsg;
+                    TempRecordRef.Field(36).Value := UserId;
+                    TempRecordRef.Field(37).Value := MatchType;
+                    TempRecordRef.Modify();
+                end;
+            until TempRecordRef.Next() = 0;
+        TempRecordRef.Close();
     end;
 
     local procedure UpdateCPMSLOBMatchedRecords()
+    var
+        TempRecordRef: RecordRef;
+        ExistingMatchType: Enum "Match Type";
+        ExistingMatchTypeValue: Integer;
     begin
-        Clear(CPMSRecordRef);
-        CPMSRecordRef.Open(Database::TTS_ARAP);
-        CPMSRecordRef.SetView(CPMSTemp.GetView());
+        // Performance: Use a separate RecordRef to avoid reopening CPMSRecordRef
+        TempRecordRef.Open(Database::TTS_ARAP);
+        TempRecordRef.SetView(CPMSTemp.GetView());
         if ParentMatchingRule."CPMS Field No." = 17 then
-            CPMSRecordRef.Field(ParentMatchingRule."CPMS Field No.").SetFilter(CPMSMatchingKeys.Get(record))
+            TempRecordRef.Field(ParentMatchingRule."CPMS Field No.").SetFilter(CPMSMatchingKeys.Get(record))
         else
-            CPMSRecordRef.Field(ParentMatchingRule."CPMS Field No.").SetFilter(Record);
+            TempRecordRef.Field(ParentMatchingRule."CPMS Field No.").SetFilter(Record);
         if MatchType = MatchType::Manual then
-            CPMSRecordRef.Field(1).SetFilter(CopyStr(CPMSEntryNo.ToText(), 1, CPMSEntryNo.Length - 1));
-        if CPMSRecordRef.FindSet() then
+            TempRecordRef.Field(1).SetFilter(CopyStr(CPMSEntryNo.ToText(), 1, CPMSEntryNo.Length - 1));
+        if TempRecordRef.FindSet() then
             repeat
-                CPMSRecordRef.Field(85009).Value := MatchingOption;
-                CPMSRecordRef.Field(85010).Value := MatchingId;
-                CPMSRecordRef.Field(85013).Value := CurrentDateTime;
-                CPMSRecordRef.Field(85015).Value := MatchingRules."Matching Rule No.";
-                CPMSRecordRef.Field(85018).Value := MatchMsg;
-                CPMSRecordRef.Field(51).Value := UserId;
-                CPMSRecordRef.Field(53).Value := MatchType;
-                CPMSRecordRef.Modify();
-            until CPMSRecordRef.Next() = 0;
+                // Match Type Priority: Check existing match type (Force > Manual > Automatic)
+                // Only update if current match type is higher or equal priority
+                ExistingMatchTypeValue := TempRecordRef.Field(53).Value;
+                ExistingMatchType := Enum::"Match Type".FromInteger(ExistingMatchTypeValue);
+                
+                // Only update if new match type has higher or equal priority
+                if MatchType >= ExistingMatchType then begin
+                    TempRecordRef.Field(85009).Value := MatchingOption;
+                    TempRecordRef.Field(85010).Value := MatchingId;
+                    TempRecordRef.Field(85013).Value := CurrentDateTime;
+                    TempRecordRef.Field(85015).Value := MatchingRules."Matching Rule No.";
+                    TempRecordRef.Field(85018).Value := MatchMsg;
+                    TempRecordRef.Field(51).Value := UserId;
+                    TempRecordRef.Field(53).Value := MatchType;
+                    TempRecordRef.Modify();
+                end;
+            until TempRecordRef.Next() = 0;
+        TempRecordRef.Close();
     end;
 
     local procedure UpdateCPMSEODMatchedRecords()
+    var
+        TempRecordRef: RecordRef;
+        ExistingMatchType: Enum "Match Type";
+        ExistingMatchTypeValue: Integer;
     begin
-        Clear(CPMSRecordRef);
-        CPMSRecordRef.Open(Database::TTS_ARAP);
-        CPMSRecordRef.SetView(CPMSTemp.GetView());
-        CPMSRecordRef.Field(ParentMatchingRule."CPMS Field No.").SetFilter(Record);
+        // Performance: Use a separate RecordRef to avoid reopening CPMSRecordRef
+        TempRecordRef.Open(Database::TTS_ARAP);
+        TempRecordRef.SetView(CPMSTemp.GetView());
+        TempRecordRef.Field(ParentMatchingRule."CPMS Field No.").SetFilter(Record);
         if MatchType = MatchType::Manual then
-            CPMSRecordRef.Field(1).SetFilter(CopyStr(CPMSEntryNo.ToText(), 1, CPMSEntryNo.Length - 1));
-        if CPMSRecordRef.FindSet() then
+            TempRecordRef.Field(1).SetFilter(CopyStr(CPMSEntryNo.ToText(), 1, CPMSEntryNo.Length - 1));
+        if TempRecordRef.FindSet() then
             repeat
-                CPMSRecordRef.Field(85011).Value := MatchingOption;
-                CPMSRecordRef.Field(85012).Value := MatchingId;
-                CPMSRecordRef.Field(85014).Value := CurrentDateTime;
-                CPMSRecordRef.Field(85016).Value := MatchingRules."Matching Rule No.";
-                CPMSRecordRef.Field(85017).Value := MatchMsg;
-                CPMSRecordRef.Field(50).Value := UserId;
-                CPMSRecordRef.Field(52).Value := MatchType;
-                CPMSRecordRef.Modify();
-            until CPMSRecordRef.Next() = 0;
+                // Match Type Priority: Check existing match type (Force > Manual > Automatic)
+                // Only update if current match type is higher or equal priority
+                ExistingMatchTypeValue := TempRecordRef.Field(52).Value;
+                ExistingMatchType := Enum::"Match Type".FromInteger(ExistingMatchTypeValue);
+                
+                // Only update if new match type has higher or equal priority
+                if MatchType >= ExistingMatchType then begin
+                    TempRecordRef.Field(85011).Value := MatchingOption;
+                    TempRecordRef.Field(85012).Value := MatchingId;
+                    TempRecordRef.Field(85014).Value := CurrentDateTime;
+                    TempRecordRef.Field(85016).Value := MatchingRules."Matching Rule No.";
+                    TempRecordRef.Field(85017).Value := MatchMsg;
+                    TempRecordRef.Field(50).Value := UserId;
+                    TempRecordRef.Field(52).Value := MatchType;
+                    TempRecordRef.Modify();
+                end;
+            until TempRecordRef.Next() = 0;
+        TempRecordRef.Close();
     end;
 
 
@@ -607,13 +781,53 @@ codeunit 85000 "Matching Process"
         LOBRecords: Record TTS_SAP;
         CPMSRecords: Record TTS_ARAP;
         MatchID: Code[20];
+        LOBCount, CPMSCount, AlreadyMatchedCount: Integer;
+        ConfirmMsg: Label 'Force Match Summary:\LOB Records: %1\CPMS Records: %2\Already Matched Records: %3\\Do you want to proceed?';
+        WarningMsg: Label 'Warning: %1 record(s) are already matched and will be overridden.';
     begin
+        // Validation: Count selections
+        LOBCount := pLOBTemp.Count();
+        CPMSCount := pCPMSTemp.Count();
+        
+        // Validation: Ensure records are selected on both sides
+        if LOBCount = 0 then
+            Error('Please select at least one LOB record to force match.');
+        if CPMSCount = 0 then
+            Error('Please select at least one CPMS record to force match.');
+
+        // Check for already matched records
+        AlreadyMatchedCount := 0;
+        if pLOBTemp.FindSet() then
+            repeat
+                if LOBRecords.Get(pLOBTemp."Entry No.") then
+                    if LOBRecords."Matching Status" = LOBRecords."Matching Status"::Matched then
+                        AlreadyMatchedCount += 1;
+            until pLOBTemp.Next() = 0;
+        
+        if pCPMSTemp.FindSet() then
+            repeat
+                if CPMSRecords.Get(pCPMSTemp."Entry No.") then
+                    if CPMSRecords."LOB Matching Status" = CPMSRecords."LOB Matching Status"::Matched then
+                        AlreadyMatchedCount += 1;
+            until pCPMSTemp.Next() = 0;
+
+        // Show confirmation with match details
+        if AlreadyMatchedCount > 0 then begin
+            if not Confirm(StrSubstNo(WarningMsg, AlreadyMatchedCount), false) then
+                exit;
+        end;
+
+        if not Confirm(StrSubstNo(ConfirmMsg, LOBCount, CPMSCount, AlreadyMatchedCount), true) then
+            exit;
+
         GLSetup.GetRecordOnce();
         GLSetup.TestField("LOB-CPMS Matching No. Series");
         MatchID := Noseries.GetNextNo(GLSetup."LOB-CPMS Matching No. Series");
+        
         if pLOBTemp.FindSet() then
             repeat
                 LOBRecords.Get(pLOBTemp."Entry No.");
+                // Match Type Priority: Force always overrides existing matches
                 LOBRecords."Matching Status" := LOBRecords."Matching Status"::Matched;
                 LOBRecords."Matching ID" := MatchID;
                 LOBRecords."Match Type" := LOBRecords."Match Type"::Force;
@@ -626,6 +840,7 @@ codeunit 85000 "Matching Process"
         if pCPMSTemp.FindSet() then
             repeat
                 CPMSRecords.Get(pCPMSTemp."Entry No.");
+                // Match Type Priority: Force always overrides existing matches
                 CPMSRecords."LOB Matching Status" := CPMSRecords."LOB Matching Status"::Matched;
                 CPMSRecords."LOB Matching ID" := MatchID;
                 CPMSRecords."LOB Match Type" := CPMSRecords."LOB Match Type"::Force;
@@ -634,6 +849,8 @@ codeunit 85000 "Matching Process"
                 CPMSRecords."LOB Matched By" := UserId;
                 CPMSRecords.Modify();
             until pCPMSTemp.Next() = 0;
+        
+        Message('Force match completed successfully.\LOB Records: %1\CPMS Records: %2\Match ID: %3', LOBCount, CPMSCount, MatchID);
     end;
 
 
@@ -642,13 +859,53 @@ codeunit 85000 "Matching Process"
         EODRecords: Record "EOD Staging";
         CPMSRecords: Record TTS_ARAP;
         MatchID: Code[20];
+        EODCount, CPMSCount, AlreadyMatchedCount: Integer;
+        ConfirmMsg: Label 'Force Match Summary:\EOD Records: %1\CPMS Records: %2\Already Matched Records: %3\\Do you want to proceed?';
+        WarningMsg: Label 'Warning: %1 record(s) are already matched and will be overridden.';
     begin
+        // Validation: Count selections
+        EODCount := pEODTemp.Count();
+        CPMSCount := pCPMSTemp.Count();
+        
+        // Validation: Ensure records are selected on both sides
+        if EODCount = 0 then
+            Error('Please select at least one EOD record to force match.');
+        if CPMSCount = 0 then
+            Error('Please select at least one CPMS record to force match.');
+
+        // Check for already matched records
+        AlreadyMatchedCount := 0;
+        if pEODTemp.FindSet() then
+            repeat
+                if EODRecords.Get(pEODTemp."Entry No.") then
+                    if EODRecords."Matching Status" = EODRecords."Matching Status"::Matched then
+                        AlreadyMatchedCount += 1;
+            until pEODTemp.Next() = 0;
+        
+        if pCPMSTemp.FindSet() then
+            repeat
+                if CPMSRecords.Get(pCPMSTemp."Entry No.") then
+                    if CPMSRecords."EOD Matching Status" = CPMSRecords."EOD Matching Status"::Matched then
+                        AlreadyMatchedCount += 1;
+            until pCPMSTemp.Next() = 0;
+
+        // Show confirmation with match details
+        if AlreadyMatchedCount > 0 then begin
+            if not Confirm(StrSubstNo(WarningMsg, AlreadyMatchedCount), false) then
+                exit;
+        end;
+
+        if not Confirm(StrSubstNo(ConfirmMsg, EODCount, CPMSCount, AlreadyMatchedCount), true) then
+            exit;
+
         GLSetup.GetRecordOnce();
         GLSetup.TestField("EOD-CPMS Matching No. Series");
         MatchID := Noseries.GetNextNo(GLSetup."EOD-CPMS Matching No. Series");
+        
         if pEODTemp.FindSet() then
             repeat
                 EODRecords.Get(pEODTemp."Entry No.");
+                // Match Type Priority: Force always overrides existing matches
                 EODRecords."Matching Status" := EODRecords."Matching Status"::Matched;
                 EODRecords."Matching ID" := MatchID;
                 EODRecords."Match Type" := EODRecords."Match Type"::Force;
@@ -661,6 +918,7 @@ codeunit 85000 "Matching Process"
         if pCPMSTemp.FindSet() then
             repeat
                 CPMSRecords.Get(pCPMSTemp."Entry No.");
+                // Match Type Priority: Force always overrides existing matches
                 CPMSRecords."EOD Matching Status" := CPMSRecords."EOD Matching Status"::Matched;
                 CPMSRecords."EOD Matching ID" := MatchID;
                 CPMSRecords."EOD Match Type" := CPMSRecords."EOD Match Type"::Force;
@@ -669,6 +927,8 @@ codeunit 85000 "Matching Process"
                 CPMSRecords."EOD Matched By" := UserId;
                 CPMSRecords.Modify();
             until pCPMSTemp.Next() = 0;
+        
+        Message('Force match completed successfully.\EOD Records: %1\CPMS Records: %2\Match ID: %3', EODCount, CPMSCount, MatchID);
     end;
 
 }
