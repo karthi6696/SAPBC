@@ -10,7 +10,6 @@ codeunit 85000 "Matching Process"
         SelectedLOB: Record TTS_SAP temporary;
         SelectedEOD: Record "EOD Staging" temporary;
 
-        EODEntryNo, LOBEntry, CPMSEntryNo : TextBuilder;
         EODTemp: Record "EOD Staging" temporary;
         MatchType: Enum "Match Type";
         Noseries: Codeunit "No. Series";
@@ -358,7 +357,6 @@ codeunit 85000 "Matching Process"
         Progress.Open(ProgressMsg);
 
         Clear(Counter);
-        Clear(LOBEntry);
         Clear(LOBMatchingRecords);
         if LOBRecordRef.FindSet() then
             repeat
@@ -377,7 +375,6 @@ codeunit 85000 "Matching Process"
                     LOBMatchingRecords.Add(ParentMatchField, SumSubMatchField);
                 end;
                 StoreParentKey := Format(LOBRecordRef.Field(ParentMatchingRule."LOB Field No.").Value);
-                LOBEntry.Append(Format(LOBRecordRef.Field(1).Value) + '|');
             until LOBRecordRef.Next() = 0;
         Progress.Close();
     end;
@@ -391,7 +388,6 @@ codeunit 85000 "Matching Process"
         Progress.Open(ProgressMsg);
         Clear(Counter);
         Clear(EODMatchingRecords);
-        Clear(EODEntryNo);
         if EODRecordRef.FindSet() then
             repeat
                 Counter += 1;
@@ -409,7 +405,6 @@ codeunit 85000 "Matching Process"
                     EODMatchingRecords.Add(ParentMatchField, SumSubMatchField);
                 end;
                 StoreParentKey := Format(EODRecordRef.Field(ParentMatchingRule."EOD Field No.").Value);
-                EODEntryNo.Append(Format(EODRecordRef.Field(1).Value) + '|');
             until EODRecordRef.Next() = 0;
         Progress.Close();
     end;
@@ -423,7 +418,6 @@ codeunit 85000 "Matching Process"
     begin
         Progress.Open(ProgressMsg);
         Clear(Counter);
-        Clear(CPMSEntryNo);
         Clear(CPMSMatchingRecords);
         Clear(CPMSMatchingKeys);
         Clear(FormatDashing);
@@ -450,7 +444,6 @@ codeunit 85000 "Matching Process"
                         CPMSMatchingRecords.Add(ParentMatchField, SubMatchField);
                 end;
                 StoreParentKey := Format(CPMSRecordRef.Field(ParentMatchingRule."CPMS Field No.").Value);
-                CPMSEntryNo.Append(Format(CPMSRecordRef.Field(1).Value) + '|');
             until CPMSRecordRef.Next() = 0;
         Progress.Close();
     end;
@@ -515,90 +508,79 @@ codeunit 85000 "Matching Process"
     end;
 
     local procedure UpdateLOBMatchedRecords()
+    var
+        LOBRecord: Record TTS_SAP;
     begin
-        Clear(LOBRecordRef);
-        LOBRecordRef.Open(Database::TTS_SAP);
-        LOBRecordRef.SetView(LOBTemp.GetView());
-        LOBRecordRef.Field(ParentMatchingRule."LOB Field No.").SetFilter(Record);
-        if MatchType = MatchType::Manual then
-            LOBRecordRef.Field(1).SetFilter(CopyStr(LOBEntry.ToText(), 1, LOBEntry.Length - 1));
-        if LOBRecordRef.FindSet() then
+        if LOBTemp.FindSet() then
             repeat
-                LOBRecordRef.Field(85005).Value := MatchingOption;
-                LOBRecordRef.Field(85006).Value := MatchingId;
-                LOBRecordRef.Field(85007).Value := CurrentDateTime;
-                LOBRecordRef.Field(85008).Value := MatchingRules."Matching Rule No.";
-                LOBRecordRef.Field(85009).Value := MatchMsg;
-                LOBRecordRef.Field(41).Value := UserId;
-                LOBRecordRef.Field(42).Value := MatchType;
-                LOBRecordRef.Modify();
-            until LOBRecordRef.Next() = 0;
+                if LOBRecord.Get(LOBTemp."Entry No.") then begin
+                    LOBRecord."Matching Status" := MatchingOption;
+                    LOBRecord."Matching ID" := MatchingId;
+                    LOBRecord."Matching Processed Date Time" := CurrentDateTime;
+                    LOBRecord."Rule No." := MatchingRules."Matching Rule No.";
+                    LOBRecord."Match Details" := MatchMsg;
+                    LOBRecord."Matched By" := UserId;
+                    LOBRecord."Match Type" := MatchType;
+                    LOBRecord.Modify();
+                end;
+            until LOBTemp.Next() = 0;
     end;
 
     local procedure UpdateEODMatchedRecords()
+    var
+        EODRecord: Record "EOD Staging";
     begin
-        Clear(EODRecordRef);
-        EODRecordRef.Open(Database::"EOD Staging");
-        EODRecordRef.SetView(EODTemp.GetView());
-        EODRecordRef.Field(ParentMatchingRule."EOD Field No.").SetFilter(Record);
-        if MatchType = MatchType::Manual then
-            EODRecordRef.Field(1).SetFilter(CopyStr(EODEntryNo.ToText(), 1, EODEntryNo.Length - 1));
-        if EODRecordRef.FindSet() then
+        if EODTemp.FindSet() then
             repeat
-                EODRecordRef.Field(31).Value := MatchingOption;
-                EODRecordRef.Field(32).Value := MatchingId;
-                EODRecordRef.Field(33).Value := CurrentDateTime;
-                EODRecordRef.Field(34).Value := MatchingRules."Matching Rule No.";
-                EODRecordRef.Field(35).Value := MatchMsg;
-                EODRecordRef.Field(36).Value := UserId;
-                EODRecordRef.Field(37).Value := MatchType;
-                EODRecordRef.Modify();
-            until EODRecordRef.Next() = 0;
+                if EODRecord.Get(EODTemp."Entry No.") then begin
+                    EODRecord."Matching Status" := MatchingOption;
+                    EODRecord."Matching ID" := MatchingId;
+                    EODRecord."Matching Processed Date Time" := CurrentDateTime;
+                    EODRecord."Rule No." := MatchingRules."Matching Rule No.";
+                    EODRecord."Match Details" := MatchMsg;
+                    EODRecord."Matched By" := UserId;
+                    EODRecord."Match Type" := MatchType;
+                    EODRecord.Modify();
+                end;
+            until EODTemp.Next() = 0;
     end;
 
     local procedure UpdateCPMSLOBMatchedRecords()
+    var
+        CPMSRecord: Record TTS_ARAP;
     begin
-        Clear(CPMSRecordRef);
-        CPMSRecordRef.Open(Database::TTS_ARAP);
-        CPMSRecordRef.SetView(CPMSTemp.GetView());
-        if ParentMatchingRule."CPMS Field No." = 17 then
-            CPMSRecordRef.Field(ParentMatchingRule."CPMS Field No.").SetFilter(CPMSMatchingKeys.Get(record))
-        else
-            CPMSRecordRef.Field(ParentMatchingRule."CPMS Field No.").SetFilter(Record);
-        if MatchType = MatchType::Manual then
-            CPMSRecordRef.Field(1).SetFilter(CopyStr(CPMSEntryNo.ToText(), 1, CPMSEntryNo.Length - 1));
-        if CPMSRecordRef.FindSet() then
+        if CPMSTemp.FindSet() then
             repeat
-                CPMSRecordRef.Field(85009).Value := MatchingOption;
-                CPMSRecordRef.Field(85010).Value := MatchingId;
-                CPMSRecordRef.Field(85013).Value := CurrentDateTime;
-                CPMSRecordRef.Field(85015).Value := MatchingRules."Matching Rule No.";
-                CPMSRecordRef.Field(85018).Value := MatchMsg;
-                CPMSRecordRef.Field(51).Value := UserId;
-                CPMSRecordRef.Field(53).Value := MatchType;
-                CPMSRecordRef.Modify();
-            until CPMSRecordRef.Next() = 0;
+                if CPMSRecord.Get(CPMSTemp."Entry No.") then begin
+                    CPMSRecord."LOB Matching Status" := MatchingOption;
+                    CPMSRecord."LOB Matching ID" := MatchingId;
+                    CPMSRecord."LOB Processed Date Time" := CurrentDateTime;
+                    CPMSRecord."LOB Rule No." := MatchingRules."Matching Rule No.";
+                    CPMSRecord."LOB Match Details" := MatchMsg;
+                    CPMSRecord."LOB Matched By" := UserId;
+                    CPMSRecord."LOB Match Type" := MatchType;
+                    CPMSRecord.Modify();
+                end;
+            until CPMSTemp.Next() = 0;
     end;
 
     local procedure UpdateCPMSEODMatchedRecords()
+    var
+        CPMSRecord: Record TTS_ARAP;
     begin
-        Clear(CPMSRecordRef);
-        CPMSRecordRef.Open(Database::TTS_ARAP);
-        CPMSRecordRef.SetView(CPMSTemp.GetView());
-        CPMSRecordRef.Field(ParentMatchingRule."CPMS Field No.").SetFilter(Record);
-        if MatchType = MatchType::Manual then
-            CPMSRecordRef.Field(1).SetFilter(CopyStr(CPMSEntryNo.ToText(), 1, CPMSEntryNo.Length - 1));
-        if CPMSRecordRef.FindSet() then
+        if CPMSTemp.FindSet() then
             repeat
-                CPMSRecordRef.Field(85011).Value := MatchingOption;
-                CPMSRecordRef.Field(85012).Value := MatchingId;
-                CPMSRecordRef.Field(85014).Value := CurrentDateTime;
-                CPMSRecordRef.Field(85016).Value := MatchingRules."Matching Rule No.";
-                CPMSRecordRef.Field(85017).Value := MatchMsg;
-                CPMSRecordRef.Field(50).Value := UserId;
-                CPMSRecordRef.Field(52).Value := MatchType;
-                CPMSRecordRef.Modify();
-            until CPMSRecordRef.Next() = 0;
+                if CPMSRecord.Get(CPMSTemp."Entry No.") then begin
+                    CPMSRecord."EOD Matching Status" := MatchingOption;
+                    CPMSRecord."EOD Matching ID" := MatchingId;
+                    CPMSRecord."EOD Processed Date Time" := CurrentDateTime;
+                    CPMSRecord."EOD Rule No." := MatchingRules."Matching Rule No.";
+                    CPMSRecord."EOD Match Details" := MatchMsg;
+                    CPMSRecord."EOD Matched By" := UserId;
+                    CPMSRecord."EOD Match Type" := MatchType;
+                    CPMSRecord.Modify();
+                end;
+            until CPMSTemp.Next() = 0;
     end;
 
 
