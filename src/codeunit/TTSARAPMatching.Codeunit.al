@@ -5,7 +5,7 @@ codeunit 85020 "TTS-ARAP Matching"
         TempMatchedPairs: Record "TTS-ARAP Match Pair" temporary;
         MatchedCount: Integer;
         ProcessingDialog: Dialog;
-        ProcessingMsg: Label 'Processing TTS-ARAP Matching...\Matched: #1######';
+        ProcessingMsg: Label 'Processing TTS-ARAP Matching...\Matched Records: #1######';
     begin
         ProcessingDialog.Open(ProcessingMsg);
         
@@ -17,7 +17,7 @@ codeunit 85020 "TTS-ARAP Matching"
         
         ProcessingDialog.Close();
         
-        Message('TTS-ARAP Matching completed.\Total Matched: %1', MatchedCount);
+        Message('TTS-ARAP Matching completed.\Total Records Matched: %1', MatchedCount);
     end;
     
     local procedure CollectMatchingCandidates(var TempMatchedPairs: Record "TTS-ARAP Match Pair" temporary)
@@ -116,8 +116,8 @@ codeunit 85020 "TTS-ARAP Matching"
             repeat
                 // Generate new matching ID
                 MatchingID := NoSeriesMgt.GetNextNo(GenLedgerSetup."TTS-ARAP Matching No. Series", Today(), true);
-                MatchDetails := StrSubstNo('Auto-matched on %1. Reference: %2, Amount: %3', 
-                    CurrentDateTime, TempMatchedPairs."Reference Key", TempMatchedPairs.Amount);
+                MatchDetails := CopyStr(StrSubstNo('Auto-matched on %1. Reference: %2, Amount: %3', 
+                    CurrentDateTime, TempMatchedPairs."Reference Key", TempMatchedPairs.Amount), 1, 1000);
                 
                 // Update TTS_SAP records
                 TTS_SAP.Reset();
