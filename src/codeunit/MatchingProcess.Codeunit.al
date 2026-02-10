@@ -939,4 +939,209 @@ codeunit 85000 "Matching Process"
         Message('Force match completed successfully.\EOD Records: %1\CPMS Records: %2\Match ID: %3', EODCount, CPMSCount, MatchID);
     end;
 
+    procedure MatchARAPData()
+    var
+        TTSSAP: Record TTS_SAP;
+        TTSARAP: Record TTS_ARAP;
+        TempSAP: Record TTS_SAP temporary;
+        TempARAP: Record TTS_ARAP temporary;
+        SAPPaymentRefs: Dictionary of [Text, Boolean];
+        SAPAmounts: Dictionary of [Text, Decimal];
+        ARAPAmounts: Dictionary of [Text, Decimal];
+        PaymentRef: Text[100];
+        SAPAmount: Decimal;
+        ARAPAmount: Decimal;
+        NewMatchingID: Code[20];
+        MatchedCount: Integer;
+        Progress: Dialog;
+        Counter: Integer;
+        TotalRecords: Integer;
+        TotalKeys: Integer;
+        ProgressMsg1: Label 'Loading SAP Records...#1######################\';
+        ProgressMsg2: Label 'Loading ARAP Records...#1######################\';
+        ProgressMsg3: Label 'Calculating SAP Amounts...#1######################\';
+        ProgressMsg4: Label 'Calculating ARAP Amounts...#1######################\';
+        ProgressMsg5: Label 'Matching Records...#1######################\';
+    begin
+        // Validate GL Setup
+        GLSetup.GetRecordOnce();
+        GLSetup.TestField("LOB-CPMS Matching No. Series");
+
+        Clear(SAPPaymentRefs);
+        Clear(SAPAmounts);
+        Clear(ARAPAmounts);
+        Clear(MatchedCount);
+        Clear(Counter);
+
+        // Performance Step 1: Load SAP records into temporary table (single database query)
+        TTSSAP.Reset();
+        TTSSAP.SetCurrentKey(Scheme, "Matching Status");
+        TTSSAP.SetRange(Scheme, 'FTTS');
+        TTSSAP.SetFilter("Matching Status", '%1|%2', TTSSAP."Matching Status"::Unmatched, TTSSAP."Matching Status"::Error);
+        TotalRecords := TTSSAP.Count();
+        
+        if TotalRecords > 100 then
+            Progress.Open(ProgressMsg1);
+        
+        if TTSSAP.FindSet() then
+            repeat
+                Counter += 1;
+                if (TotalRecords > 100) and (Counter mod 100 = 0) then
+                    Progress.Update(1, Counter);
+                
+                TempSAP.Init();
+                TempSAP := TTSSAP;
+                TempSAP.Insert();
+                
+                // Build dictionary of unique payment references for O(1) lookup
+                if TempSAP.PaymentReference <> '' then
+                    if not SAPPaymentRefs.ContainsKey(TempSAP.PaymentReference) then
+                        SAPPaymentRefs.Add(TempSAP.PaymentReference, true);
+            until TTSSAP.Next() = 0;
+        
+        if TotalRecords > 100 then
+            Progress.Close();
+
+        // Performance Step 2: Load ARAP records into temporary table (single database query)
+        Clear(Counter);
+        TTSARAP.Reset();
+        TTSARAP.SetCurrentKey(Scheme, "LOB Matching Status");
+        TTSARAP.SetRange(Scheme, 'FTTS');
+        TTSARAP.SetFilter("LOB Matching Status", '%1|%2', TTSARAP."LOB Matching Status"::Unmatched, TTSARAP."LOB Matching Status"::Error);
+        TotalRecords := TTSARAP.Count();
+        
+        if TotalRecords > 100 then
+            Progress.Open(ProgressMsg2);
+        
+        if TTSARAP.FindSet() then
+            repeat
+                Counter += 1;
+                if (TotalRecords > 100) and (Counter mod 100 = 0) then
+                    Progress.Update(1, Counter);
+                
+                TempARAP.Init();
+                TempARAP := TTSARAP;
+                TempARAP.Insert();
+            until TTSARAP.Next() = 0;
+        
+        if TotalRecords > 100 then
+            Progress.Close();
+
+        // Performance Step 3: Calculate SAP amounts (Activity = INVOICE) - single pass through temp table
+        Clear(Counter);
+        TempSAP.Reset();
+        TempSAP.SetRange(Activity, 'INVOICE');
+        TotalRecords := TempSAP.Count();
+        
+        if TotalRecords > 100 then
+            Progress.Open(ProgressMsg3);
+        
+        if TempSAP.FindSet() then
+            repeat
+                Counter += 1;
+                if (TotalRecords > 100) and (Counter mod 100 = 0) then
+                    Progress.Update(1, Counter);
+                
+                if TempSAP.PaymentReference <> '' then begin
+                    if not SAPAmounts.Get(TempSAP.PaymentReference, SAPAmount) then
+                        SAPAmount := 0;
+                    SAPAmount += TempSAP.TestCostWithoutVat;
+                    SAPAmounts.Set(TempSAP.PaymentReference, SAPAmount);
+                end;
+            until TempSAP.Next() = 0;
+        
+        if TotalRecords > 100 then
+            Progress.Close();
+
+        // Performance Step 4: Calculate ARAP amounts (Activity = PAYMENT) - single pass through temp table
+        Clear(Counter);
+        TempARAP.Reset();
+        TempARAP.SetRange(Activity, 'PAYMENT');
+        TotalRecords := TempARAP.Count();
+        
+        if TotalRecords > 100 then
+            Progress.Open(ProgressMsg4);
+        
+        if TempARAP.FindSet() then
+            repeat
+                Counter += 1;
+                if (TotalRecords > 100) and (Counter mod 100 = 0) then
+                    Progress.Update(1, Counter);
+                
+                if TempARAP.ReceiptNumber <> '' then begin
+                    if not ARAPAmounts.Get(TempARAP.ReceiptNumber, ARAPAmount) then
+                        ARAPAmount := 0;
+                    ARAPAmount += TempARAP.LineAmountNet;
+                    ARAPAmounts.Set(TempARAP.ReceiptNumber, ARAPAmount);
+                end;
+            until TempARAP.Next() = 0;
+        
+        if TotalRecords > 100 then
+            Progress.Close();
+
+        // Performance Step 5: Compare amounts and mark as matched
+        Clear(Counter);
+        TotalKeys := SAPAmounts.Keys.Count();
+        
+        if TotalKeys > 100 then
+            Progress.Open(ProgressMsg5);
+
+        foreach PaymentRef in SAPAmounts.Keys do begin
+            Counter += 1;
+            if (TotalKeys > 100) and (Counter mod 100 = 0) then
+                Progress.Update(1, Counter);
+
+            if SAPAmounts.Get(PaymentRef, SAPAmount) and ARAPAmounts.ContainsKey(PaymentRef) then begin
+                ARAPAmounts.Get(PaymentRef, ARAPAmount);
+                
+                // Compare amounts - if equal, mark as matched
+                if SAPAmount = ARAPAmount then begin
+                    // Generate new matching ID
+                    NewMatchingID := Noseries.GetNextNo(GLSetup."LOB-CPMS Matching No. Series");
+                    
+                    // Update TTS_SAP records - use temp table for filtered set
+                    TempSAP.Reset();
+                    TempSAP.SetRange(Activity, 'INVOICE');
+                    TempSAP.SetRange(PaymentReference, PaymentRef);
+                    if TempSAP.FindSet() then
+                        repeat
+                            // Get actual record from database and update
+                            if TTSSAP.Get(TempSAP."Entry No.") then begin
+                                TTSSAP."Matching Status" := TTSSAP."Matching Status"::Matched;
+                                TTSSAP."Matching ID" := NewMatchingID;
+                                TTSSAP."Matching Processed Date Time" := CurrentDateTime;
+                                TTSSAP."Matched By" := UserId;
+                                TTSSAP."Match Type" := TTSSAP."Match Type"::Automatic;
+                                TTSSAP.Modify();
+                            end;
+                        until TempSAP.Next() = 0;
+                    
+                    // Update TTS_ARAP records - use temp table for filtered set
+                    TempARAP.Reset();
+                    TempARAP.SetRange(Activity, 'PAYMENT');
+                    TempARAP.SetRange(ReceiptNumber, PaymentRef);
+                    if TempARAP.FindSet() then
+                        repeat
+                            // Get actual record from database and update
+                            if TTSARAP.Get(TempARAP."Entry No.") then begin
+                                TTSARAP."LOB Matching Status" := TTSARAP."LOB Matching Status"::Matched;
+                                TTSARAP."LOB Matching ID" := NewMatchingID;
+                                TTSARAP."LOB Processed Date Time" := CurrentDateTime;
+                                TTSARAP."LOB Matched By" := UserId;
+                                TTSARAP."LOB Match Type" := TTSARAP."LOB Match Type"::Automatic;
+                                TTSARAP.Modify();
+                            end;
+                        until TempARAP.Next() = 0;
+                    
+                    MatchedCount += 1;
+                end;
+            end;
+        end;
+
+        if TotalKeys > 100 then
+            Progress.Close();
+
+        Message('ARAP Matching completed successfully.\Matched reference groups: %1', MatchedCount);
+    end;
+
 }
