@@ -955,7 +955,7 @@ codeunit 85000 "Matching Process"
         Progress: Dialog;
         Counter: Integer;
         TotalKeys: Integer;
-        ProgressMsg: Label 'Matching TTS ARAP Records......#1######################\';
+        ProgressMsg: Label 'Matching TTS ARAP Records...#1######################\';
     begin
         // Validate GL Setup
         GLSetup.GetRecordOnce();
@@ -997,8 +997,7 @@ codeunit 85000 "Matching Process"
                     SAPAmount += TTSSAP.TestCostWithoutVat;
                 until TTSSAP.Next() = 0;
             
-            if not SAPAmounts.ContainsKey(PaymentRef) then
-                SAPAmounts.Add(PaymentRef, SAPAmount);
+            SAPAmounts.Add(PaymentRef, SAPAmount);
         end;
 
         // Step 5-7: Calculate sum of LineAmountNet for TTS_ARAP grouped by ReceiptNumber
@@ -1015,8 +1014,7 @@ codeunit 85000 "Matching Process"
                     ARAPAmount += TTSARAP.LineAmountNet;
                 until TTSARAP.Next() = 0;
             
-            if not ARAPAmounts.ContainsKey(ReceiptNum) then
-                ARAPAmounts.Add(ReceiptNum, ARAPAmount);
+            ARAPAmounts.Add(ReceiptNum, ARAPAmount);
         end;
 
         // Step 8: Compare amounts and mark as matched
