@@ -184,19 +184,23 @@ codeunit 85020 "TTS-ARAP Matching"
         MatchDetails: Text[1000];
         TotalPairs: Integer;
         CurrentPair: Integer;
+        LastUpdateCount: Integer;
     begin
         GenLedgerSetup.Get();
         GenLedgerSetup.TestField("TTS-ARAP Matching No. Series");
         
         CurrentDateTime := CurrentDateTime();
         MatchedCount := 0;
+        LastUpdateCount := 0;
         TotalPairs := TempMatchedPairs.Count();
         CurrentPair := 0;
         
         if TempMatchedPairs.FindSet() then
             repeat
                 CurrentPair += 1;
-                ProcessingDialog.Update(1, StrSubstNo('Processing pair %1 of %2...', CurrentPair, TotalPairs));
+                // Update dialog every 10 pairs or on last pair to reduce UI overhead
+                if (CurrentPair mod 10 = 0) or (CurrentPair = TotalPairs) then
+                    ProcessingDialog.Update(1, StrSubstNo('Processing pair %1 of %2...', CurrentPair, TotalPairs));
                 
                 // Generate new matching ID
                 MatchingID := NoSeriesMgt.GetNextNo(GenLedgerSetup."TTS-ARAP Matching No. Series", Today(), true);
@@ -224,7 +228,6 @@ codeunit 85020 "TTS-ARAP Matching"
                         TTS_SAP."Matched By" := UserId();
                         TTS_SAP.Modify(true);
                         MatchedCount += 1;
-                        ProcessingDialog.Update(2, MatchedCount);
                     until TTS_SAP.Next() = 0;
                 
                 // Update TTS_ARAP records
@@ -248,8 +251,13 @@ codeunit 85020 "TTS-ARAP Matching"
                         TTS_ARAP."LOB Matched By" := UserId();
                         TTS_ARAP.Modify(true);
                         MatchedCount += 1;
-                        ProcessingDialog.Update(2, MatchedCount);
                     until TTS_ARAP.Next() = 0;
+                
+                // Update matched count every 50 records or on last pair to reduce UI overhead
+                if (MatchedCount - LastUpdateCount >= 50) or (CurrentPair = TotalPairs) then begin
+                    ProcessingDialog.Update(2, MatchedCount);
+                    LastUpdateCount := MatchedCount;
+                end;
                     
             until TempMatchedPairs.Next() = 0;
         
