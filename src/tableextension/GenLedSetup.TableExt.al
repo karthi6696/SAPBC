@@ -18,5 +18,9 @@ tableextension 85005 GenLedSetup extends "General Ledger Setup"
         {
             TableRelation = "No. Series";
         }
+        field(85004; "TTS-ARAP Matching No. Series"; Code[20])
+        {
+            TableRelation = "No. Series";
+        }
     }
 }

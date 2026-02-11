@@ -25,6 +25,11 @@ pageextension 85006 GenLedSetup extends "General Ledger Setup"
                 ApplicationArea = All;
                 ToolTip = 'Specifies the value of the EOD-CPMS Error No. Series field.', Comment = '%';
             }
+            field("TTS-ARAP Matching No. Series"; Rec."TTS-ARAP Matching No. Series")
+            {
+                ApplicationArea = All;
+                ToolTip = 'Specifies the value of the TTS-ARAP Matching No. Series field.', Comment = '%';
+            }
         }
     }
 }
