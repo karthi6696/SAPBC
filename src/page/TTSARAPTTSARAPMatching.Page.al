@@ -81,9 +81,7 @@ page 85032 "TTS-ARAP TTS_ARAP Matching"
     begin
         Rec.SetRange("LOB Matching Status");
         if ShowUnmatched then
-            Rec.SetRange("LOB Matching Status", Rec."LOB Matching Status"::Unmatched)
-        else
-            Rec.SetRange("LOB Matching Status");
+            Rec.SetRange("LOB Matching Status", Rec."LOB Matching Status"::Unmatched);
         CurrPage.Update();
     end;
     

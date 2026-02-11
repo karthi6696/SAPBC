@@ -81,9 +81,7 @@ page 85031 "TTS-ARAP TTS_SAP Matching"
     begin
         Rec.SetRange("Matching Status");
         if ShowUnmatched then
-            Rec.SetRange("Matching Status", Rec."Matching Status"::Unmatched)
-        else
-            Rec.SetRange("Matching Status");
+            Rec.SetRange("Matching Status", Rec."Matching Status"::Unmatched);
         CurrPage.Update();
     end;
     
