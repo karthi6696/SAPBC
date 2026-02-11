@@ -339,6 +339,11 @@ page 85017 "LOB Matching"
         CPMSStaging: Record TTS_ARAP;
         MatchingIDList: List of [Code[20]];
         MatchingID: Code[20];
+        ProgressDialog: Dialog;
+        Counter: Integer;
+        TotalMatchingIDs: Integer;
+        ProgressMsg: Label 'Removing Matching...\\Processing Matching ID #1 of #2', Comment = '#1 = Current count, #2 = Total count';
+        CompletedMsg: Label 'Remove matching completed successfully.\%1 Matching IDs processed.', Comment = '%1 = Total count';
     begin
         CurrPage.SetSelectionFilter(LOBStaging);
         LOBStaging.SetLoadFields("Matching ID", "Matching Status");
@@ -352,8 +357,20 @@ page 85017 "LOB Matching"
                     MatchingIDList.Add(LOBStaging."Matching ID");
             until LOBStaging.Next() = 0;
 
+        TotalMatchingIDs := MatchingIDList.Count();
+        if TotalMatchingIDs = 0 then
+            exit;
+
+        // Show progress dialog
+        ProgressDialog.Open(ProgressMsg);
+        Counter := 0;
+
         // Process each unique Matching ID only once
         foreach MatchingID in MatchingIDList do begin
+            Counter += 1;
+            ProgressDialog.Update(1, Counter);
+            ProgressDialog.Update(2, TotalMatchingIDs);
+
             CPMSStaging.Reset();
             CPMSStaging.SetLoadFields("LOB Matching ID", "LOB Matching Status");
             CPMSStaging.SetRange("LOB Matching ID", MatchingID);
@@ -374,6 +391,9 @@ page 85017 "LOB Matching"
                     LOBStaging1.Modify(false);
                 until LOBStaging1.Next() = 0;
         end;
+
+        ProgressDialog.Close();
+        Message(CompletedMsg, TotalMatchingIDs);
     end;
 
     procedure ToggleMatchedFilter(SetFilterOn: Boolean)
