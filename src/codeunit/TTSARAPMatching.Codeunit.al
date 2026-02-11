@@ -1,5 +1,8 @@
 codeunit 85020 "TTS-ARAP Matching"
 {
+    var
+        ChunkSizeConst: Integer;
+
     procedure MatchTTSARAPData()
     var
         TempMatchedPairs: Record "TTS-ARAP Match Pair" temporary;
@@ -7,6 +10,7 @@ codeunit 85020 "TTS-ARAP Matching"
         ProcessingDialog: Dialog;
         ProcessingMsg: Label 'Processing TTS-ARAP Matching...\#1################################\Matched Pairs: #2######';
     begin
+        ChunkSizeConst := 50;  // Process 50 pairs per chunk to avoid filter size limit (~500 chars < 1000 limit)
         ProcessingDialog.Open(ProcessingMsg);
         
         // Step 1 & 2: Filter and collect matching candidates
@@ -188,7 +192,7 @@ codeunit 85020 "TTS-ARAP Matching"
     begin
         TotalPairs := TempMatchedPairs.Count();
         MatchedPairCount := 0;
-        ChunkSize := 50;  // Process 50 pairs per chunk to avoid filter size limit
+        ChunkSize := ChunkSizeConst;
         TotalChunks := (TotalPairs + ChunkSize - 1) div ChunkSize;  // Round up
         
         // Process pairs in chunks to avoid filter string size limit (AL text ~1000 chars)
@@ -204,7 +208,7 @@ codeunit 85020 "TTS-ARAP Matching"
                 TempChunkPairs := TempMatchedPairs;
                 TempChunkPairs.Insert();
                 
-                // Process chunk when full or at end
+                // Process chunk when full or at end (both conditions needed: mod doesn't catch last partial chunk)
                 if (CurrentPair mod ChunkSize = 0) or (CurrentPair = TotalPairs) then begin
                     CurrentChunk += 1;
                     ProcessingDialog.Update(1, StrSubstNo('Processing chunk %1 of %2 (%3 pairs)...', 
