@@ -176,6 +176,57 @@ codeunit 85020 "TTS-ARAP Matching"
     
     local procedure ProcessMatches(var TempMatchedPairs: Record "TTS-ARAP Match Pair" temporary; var ProcessingDialog: Dialog): Integer
     var
+        TempChunkPairs: Record "TTS-ARAP Match Pair" temporary;
+        TotalPairs: Integer;
+        MatchedPairCount: Integer;
+        ChunkStartPair: Integer;
+        ChunkEndPair: Integer;
+        ChunkSize: Integer;
+        CurrentPair: Integer;
+        TotalChunks: Integer;
+        CurrentChunk: Integer;
+    begin
+        TotalPairs := TempMatchedPairs.Count();
+        MatchedPairCount := 0;
+        ChunkSize := 50;  // Process 50 pairs per chunk to avoid filter size limit
+        TotalChunks := (TotalPairs + ChunkSize - 1) div ChunkSize;  // Round up
+        
+        // Process pairs in chunks to avoid filter string size limit (AL text ~1000 chars)
+        // For 10,000 pairs: 200 chunks × 2 queries = 400 queries (vs 20,000 without chunking)
+        CurrentPair := 0;
+        CurrentChunk := 0;
+        
+        if TempMatchedPairs.FindSet() then
+            repeat
+                CurrentPair += 1;
+                
+                // Add to chunk temporary table
+                TempChunkPairs := TempMatchedPairs;
+                TempChunkPairs.Insert();
+                
+                // Process chunk when full or at end
+                if (CurrentPair mod ChunkSize = 0) or (CurrentPair = TotalPairs) then begin
+                    CurrentChunk += 1;
+                    ProcessingDialog.Update(1, StrSubstNo('Processing chunk %1 of %2 (%3 pairs)...', 
+                        CurrentChunk, TotalChunks, TempChunkPairs.Count()));
+                    
+                    // Process this chunk
+                    MatchedPairCount += ProcessChunk(TempChunkPairs, ProcessingDialog);
+                    
+                    // Clear chunk for next batch
+                    TempChunkPairs.DeleteAll();
+                    
+                    // Update overall count
+                    ProcessingDialog.Update(2, MatchedPairCount);
+                end;
+                
+            until TempMatchedPairs.Next() = 0;
+        
+        exit(MatchedPairCount);
+    end;
+    
+    local procedure ProcessChunk(var TempChunkPairs: Record "TTS-ARAP Match Pair" temporary; var ProcessingDialog: Dialog): Integer
+    var
         TTS_SAP: Record TTS_SAP;
         TTS_ARAP: Record TTS_ARAP;
         TempTTSSAP: Record TTS_SAP temporary;
@@ -183,48 +234,32 @@ codeunit 85020 "TTS-ARAP Matching"
         GenLedgerSetup: Record "General Ledger Setup";
         NoSeriesMgt: Codeunit NoSeriesManagement;
         MatchingID: Code[20];
-        MatchedPairCount: Integer;
         CurrentDateTime: DateTime;
         MatchDetails: Text[1000];
-        TotalPairs: Integer;
-        CurrentPair: Integer;
-        LastUpdateCount: Integer;
         PaymentRefFilter: Text;
         ReceiptNoFilter: Text;
+        ChunkMatchedCount: Integer;
     begin
         GenLedgerSetup.Get();
         GenLedgerSetup.TestField("TTS-ARAP Matching No. Series");
-        
         CurrentDateTime := CurrentDateTime();
-        MatchedPairCount := 0;
-        LastUpdateCount := 0;
-        TotalPairs := TempMatchedPairs.Count();
-        CurrentPair := 0;
+        ChunkMatchedCount := 0;
         
-        // Pre-fetch all TTS_SAP and TTS_ARAP records in ONE query each
-        // This eliminates N SELECT queries (one per pair)
-        // Note: Filter string limited to ~1000 chars. For >50 pairs with long refs, consider chunking.
-        ProcessingDialog.Update(1, 'Pre-fetching records for matching...');
-        
-        // Build filter for all PaymentReferences from matched pairs
+        // Build filter for this chunk's PaymentReferences
         PaymentRefFilter := '';
         ReceiptNoFilter := '';
-        if TempMatchedPairs.FindSet() then
+        if TempChunkPairs.FindSet() then
             repeat
                 if PaymentRefFilter <> '' then
                     PaymentRefFilter += '|';
-                PaymentRefFilter += TempMatchedPairs."Reference Key";
+                PaymentRefFilter += TempChunkPairs."Reference Key";
                 
                 if ReceiptNoFilter <> '' then
                     ReceiptNoFilter += '|';
-                ReceiptNoFilter += TempMatchedPairs."Reference Key";
-            until TempMatchedPairs.Next() = 0;
+                ReceiptNoFilter += TempChunkPairs."Reference Key";
+            until TempChunkPairs.Next() = 0;
         
-        // Validate filter string size (AL text limit is ~1000-2000 chars)
-        if StrLen(PaymentRefFilter) > 1000 then
-            Error('Too many matching pairs (%1). Filter exceeds size limit. Please process in smaller batches.', TotalPairs);
-        
-        // Pre-fetch ALL TTS_SAP records that match ANY pair - ONE query
+        // Pre-fetch TTS_SAP records for this chunk - ONE query per chunk
         TTS_SAP.Reset();
         TTS_SAP.SetCurrentKey(Scheme, Activity, PaymentReference, "Matching Status");
         TTS_SAP.SetRange(Scheme, 'FTTS');
@@ -240,7 +275,7 @@ codeunit 85020 "TTS-ARAP Matching"
                 TempTTSSAP.Insert();
             until TTS_SAP.Next() = 0;
         
-        // Pre-fetch ALL TTS_ARAP records that match ANY pair - ONE query
+        // Pre-fetch TTS_ARAP records for this chunk - ONE query per chunk
         TTS_ARAP.Reset();
         TTS_ARAP.SetCurrentKey(Scheme, Activity, ReceiptNumber, "LOB Matching Status");
         TTS_ARAP.SetRange(Scheme, 'FTTS');
@@ -256,22 +291,17 @@ codeunit 85020 "TTS-ARAP Matching"
                 TempTTSARAP.Insert();
             until TTS_ARAP.Next() = 0;
         
-        // Now process each pair using the pre-fetched temporary records
-        if TempMatchedPairs.FindSet() then
+        // Process each pair in this chunk using the pre-fetched temporary records
+        if TempChunkPairs.FindSet() then
             repeat
-                CurrentPair += 1;
-                // Update dialog every 10 pairs or on last pair to reduce UI overhead
-                if (CurrentPair mod 10 = 0) or (CurrentPair = TotalPairs) then
-                    ProcessingDialog.Update(1, StrSubstNo('Processing pair %1 of %2...', CurrentPair, TotalPairs));
-                
                 // Generate new matching ID
                 MatchingID := NoSeriesMgt.GetNextNo(GenLedgerSetup."TTS-ARAP Matching No. Series", Today(), true);
                 MatchDetails := CopyStr(StrSubstNo('Auto-matched on %1. Reference: %2, Amount: %3', 
-                    CurrentDateTime, TempMatchedPairs."Reference Key", TempMatchedPairs.Amount), 1, 1000);
+                    CurrentDateTime, TempChunkPairs."Reference Key", TempChunkPairs.Amount), 1, 1000);
                 
                 // Update TTS_SAP records from temporary table (no SELECT query)
                 TempTTSSAP.Reset();
-                TempTTSSAP.SetRange(PaymentReference, TempMatchedPairs."Reference Key");
+                TempTTSSAP.SetRange(PaymentReference, TempChunkPairs."Reference Key");
                 if TempTTSSAP.FindSet() then
                     repeat
                         // Get the actual record for updating (with error handling)
@@ -288,7 +318,7 @@ codeunit 85020 "TTS-ARAP Matching"
                 
                 // Update TTS_ARAP records from temporary table (no SELECT query)
                 TempTTSARAP.Reset();
-                TempTTSARAP.SetRange(ReceiptNumber, TempMatchedPairs."Reference Key");
+                TempTTSARAP.SetRange(ReceiptNumber, TempChunkPairs."Reference Key");
                 if TempTTSARAP.FindSet() then
                     repeat
                         // Get the actual record for updating (with error handling)
@@ -303,18 +333,12 @@ codeunit 85020 "TTS-ARAP Matching"
                         end;
                     until TempTTSARAP.Next() = 0;
                 
-                // Increment pair count once per matched pair (not per record)
-                MatchedPairCount += 1;
+                // Increment pair count for this chunk
+                ChunkMatchedCount += 1;
                 
-                // Update matched pair count every 10 pairs or on last pair to reduce UI overhead
-                if (MatchedPairCount - LastUpdateCount >= 10) or (CurrentPair = TotalPairs) then begin
-                    ProcessingDialog.Update(2, MatchedPairCount);
-                    LastUpdateCount := MatchedPairCount;
-                end;
-                    
-            until TempMatchedPairs.Next() = 0;
+            until TempChunkPairs.Next() = 0;
         
-        exit(MatchedPairCount);
+        exit(ChunkMatchedCount);
     end;
     
     var
