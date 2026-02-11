@@ -5,15 +5,18 @@ codeunit 85020 "TTS-ARAP Matching"
         TempMatchedPairs: Record "TTS-ARAP Match Pair" temporary;
         MatchedCount: Integer;
         ProcessingDialog: Dialog;
-        ProcessingMsg: Label 'Processing TTS-ARAP Matching...\Matched Records: #1######';
+        ProcessingMsg: Label 'Processing TTS-ARAP Matching...\#1################################\Matched Records: #2######';
     begin
         ProcessingDialog.Open(ProcessingMsg);
         
         // Step 1 & 2: Filter and collect matching candidates
-        CollectMatchingCandidates(TempMatchedPairs);
+        ProcessingDialog.Update(1, 'Collecting and grouping records...');
+        ProcessingDialog.Update(2, 0);
+        CollectMatchingCandidates(TempMatchedPairs, ProcessingDialog);
         
         // Step 3: Apply matching logic and update records
-        MatchedCount := ProcessMatches(TempMatchedPairs);
+        ProcessingDialog.Update(1, 'Updating matched records...');
+        MatchedCount := ProcessMatches(TempMatchedPairs, ProcessingDialog);
         
         ProcessingDialog.Close();
         
@@ -49,7 +52,7 @@ codeunit 85020 "TTS-ARAP Matching"
             until TempTTSARAP.Next() = 0;
     end;
     
-    local procedure CollectMatchingCandidates(var TempMatchedPairs: Record "TTS-ARAP Match Pair" temporary)
+    local procedure CollectMatchingCandidates(var TempMatchedPairs: Record "TTS-ARAP Match Pair" temporary; var ProcessingDialog: Dialog)
     var
         TTS_SAP: Record TTS_SAP;
         TTS_ARAP: Record TTS_ARAP;
@@ -57,6 +60,7 @@ codeunit 85020 "TTS-ARAP Matching"
         TempTTSARAPGrouped: Record "TTS-ARAP Match Pair" temporary;
     begin
         // Filter and group TTS_SAP records
+        ProcessingDialog.Update(1, 'Collecting TTS_SAP records...');
         if MatchType = MatchType::Manual then begin
             // Use selected records for manual matching
             if TempSelectedTTSSAP.FindSet() then
@@ -104,6 +108,7 @@ codeunit 85020 "TTS-ARAP Matching"
         end;
         
         // Filter and group TTS_ARAP records
+        ProcessingDialog.Update(1, 'Collecting TTS_ARAP records...');
         if MatchType = MatchType::Manual then begin
             // Use selected records for manual matching
             if TempSelectedTTSARAP.FindSet() then
@@ -151,6 +156,7 @@ codeunit 85020 "TTS-ARAP Matching"
         end;
         
         // Match grouped records where amounts are equal
+        ProcessingDialog.Update(1, 'Finding matching pairs...');
         if TempTTSSAPGrouped.FindSet() then
             repeat
                 TempTTSARAPGrouped.SetRange("Reference Key", TempTTSSAPGrouped."Reference Key");
@@ -166,7 +172,7 @@ codeunit 85020 "TTS-ARAP Matching"
             until TempTTSSAPGrouped.Next() = 0;
     end;
     
-    local procedure ProcessMatches(var TempMatchedPairs: Record "TTS-ARAP Match Pair" temporary): Integer
+    local procedure ProcessMatches(var TempMatchedPairs: Record "TTS-ARAP Match Pair" temporary; var ProcessingDialog: Dialog): Integer
     var
         TTS_SAP: Record TTS_SAP;
         TTS_ARAP: Record TTS_ARAP;
@@ -176,15 +182,22 @@ codeunit 85020 "TTS-ARAP Matching"
         MatchedCount: Integer;
         CurrentDateTime: DateTime;
         MatchDetails: Text[1000];
+        TotalPairs: Integer;
+        CurrentPair: Integer;
     begin
         GenLedgerSetup.Get();
         GenLedgerSetup.TestField("TTS-ARAP Matching No. Series");
         
         CurrentDateTime := CurrentDateTime();
         MatchedCount := 0;
+        TotalPairs := TempMatchedPairs.Count();
+        CurrentPair := 0;
         
         if TempMatchedPairs.FindSet() then
             repeat
+                CurrentPair += 1;
+                ProcessingDialog.Update(1, StrSubstNo('Processing pair %1 of %2...', CurrentPair, TotalPairs));
+                
                 // Generate new matching ID
                 MatchingID := NoSeriesMgt.GetNextNo(GenLedgerSetup."TTS-ARAP Matching No. Series", Today(), true);
                 MatchDetails := CopyStr(StrSubstNo('Auto-matched on %1. Reference: %2, Amount: %3', 
@@ -211,6 +224,7 @@ codeunit 85020 "TTS-ARAP Matching"
                         TTS_SAP."Matched By" := UserId();
                         TTS_SAP.Modify(true);
                         MatchedCount += 1;
+                        ProcessingDialog.Update(2, MatchedCount);
                     until TTS_SAP.Next() = 0;
                 
                 // Update TTS_ARAP records
@@ -234,6 +248,7 @@ codeunit 85020 "TTS-ARAP Matching"
                         TTS_ARAP."LOB Matched By" := UserId();
                         TTS_ARAP.Modify(true);
                         MatchedCount += 1;
+                        ProcessingDialog.Update(2, MatchedCount);
                     until TTS_ARAP.Next() = 0;
                     
             until TempMatchedPairs.Next() = 0;
