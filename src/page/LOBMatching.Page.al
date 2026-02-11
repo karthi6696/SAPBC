@@ -343,7 +343,7 @@ page 85017 "LOB Matching"
         Counter: Integer;
         TotalMatchingIDs: Integer;
         ProgressMsg: Label 'Removing Matching...\\Processing Matching ID #1 of #2', Comment = '#1 = Current count, #2 = Total count';
-        CompletedMsg: Label 'Remove matching completed successfully.\%1 Matching IDs processed.', Comment = '%1 = Total count';
+        CompletedMsg: Label 'Remove matching completed successfully.\\%1 Matching IDs processed.', Comment = '%1 = Total count';
     begin
         CurrPage.SetSelectionFilter(LOBStaging);
         LOBStaging.SetLoadFields("Matching ID", "Matching Status");
