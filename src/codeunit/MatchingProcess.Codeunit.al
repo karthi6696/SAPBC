@@ -78,7 +78,7 @@ codeunit 85012 "Matching Process"
                 TempTTSARAPGrouped.SetRange(ReceiptNumber, TempTTSSAPGrouped.PaymentReference);
                 if TempTTSARAPGrouped.FindFirst() then begin
                     // Use tolerance-based comparison for amounts to handle rounding differences
-                    if Abs(TempTTSSAPGrouped.TestCostWithoutVat - TempTTSARAPGrouped.ReceiptAmount) < 0.01 then begin
+                    if Abs(TempTTSSAPGrouped.TestCostWithoutVat - TempTTSARAPGrouped.ReceiptAmount) < AmountMatchingTolerance then begin
                         // Create match
                         CreateLOBCPMSMatch(TempTTSSAPGrouped, TempTTSARAPGrouped);
                         MatchedCount += 1;
@@ -132,7 +132,7 @@ codeunit 85012 "Matching Process"
                 TempCPMSGrouped.SetRange(ReceiptNumber, TempEODGrouped."Reference Number");
                 if TempCPMSGrouped.FindFirst() then begin
                     // Use tolerance-based comparison for amounts to handle rounding differences
-                    if Abs(TempEODGrouped."Transaction Amount" - TempCPMSGrouped.ReceiptAmount) < 0.01 then begin
+                    if Abs(TempEODGrouped."Transaction Amount" - TempCPMSGrouped.ReceiptAmount) < AmountMatchingTolerance then begin
                         // Create match
                         CreateEODCPMSMatch(TempEODGrouped, TempCPMSGrouped);
                         MatchedCount += 1;
@@ -239,8 +239,6 @@ codeunit 85012 "Matching Process"
         MatchID: Code[20];
         NoSeries: Codeunit "No. Series";
         GLSetup: Record "General Ledger Setup";
-        MatchedLbl: Label 'Matched Automatically';
-        GLSetupErr: Label 'General Ledger Setup must be configured before matching records.';
     begin
         if not GLSetup.Get() then
             Error(GLSetupErr);
@@ -254,7 +252,7 @@ codeunit 85012 "Matching Process"
             LOB."Match Type" := gMatchType;
             LOB."Matching Processed Date Time" := CurrentDateTime;
             LOB."Matched By" := UserId;
-            LOB."Match Details" := MatchedLbl;
+            LOB."Match Details" := MatchedAutomaticallyLbl;
             LOB.Modify();
         end;
         
@@ -265,7 +263,7 @@ codeunit 85012 "Matching Process"
             CPMS."LOB Match Type" := gMatchType;
             CPMS."LOB Processed Date Time" := CurrentDateTime;
             CPMS."LOB Matched By" := UserId;
-            CPMS."LOB Match Details" := MatchedLbl;
+            CPMS."LOB Match Details" := MatchedAutomaticallyLbl;
             CPMS.Modify();
         end;
     end;
@@ -277,8 +275,6 @@ codeunit 85012 "Matching Process"
         MatchID: Code[20];
         NoSeries: Codeunit "No. Series";
         GLSetup: Record "General Ledger Setup";
-        MatchedLbl: Label 'Matched Automatically';
-        GLSetupErr: Label 'General Ledger Setup must be configured before matching records.';
     begin
         if not GLSetup.Get() then
             Error(GLSetupErr);
@@ -292,7 +288,7 @@ codeunit 85012 "Matching Process"
             EOD."Match Type" := gMatchType;
             EOD."Matching Processed Date Time" := CurrentDateTime;
             EOD."Matched By" := UserId;
-            EOD."Match Details" := MatchedLbl;
+            EOD."Match Details" := MatchedAutomaticallyLbl;
             EOD.Modify();
         end;
         
@@ -303,7 +299,7 @@ codeunit 85012 "Matching Process"
             CPMS."EOD Match Type" := gMatchType;
             CPMS."EOD Processed Date Time" := CurrentDateTime;
             CPMS."EOD Matched By" := UserId;
-            CPMS."EOD Match Details" := MatchedLbl;
+            CPMS."EOD Match Details" := MatchedAutomaticallyLbl;
             CPMS.Modify();
         end;
     end;
@@ -313,4 +309,12 @@ codeunit 85012 "Matching Process"
         TempSelectedCPMS: Record TTS_ARAP temporary;
         TempSelectedEOD: Record "EOD Staging" temporary;
         gMatchType: Enum "Match Type";
+        AmountMatchingTolerance: Decimal;
+        MatchedAutomaticallyLbl: Label 'Matched Automatically';
+        GLSetupErr: Label 'General Ledger Setup must be configured before matching records.';
+
+    trigger OnRun()
+    begin
+        AmountMatchingTolerance := 0.01;
+    end;
 }
