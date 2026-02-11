@@ -337,38 +337,58 @@ page 85017 "LOB Matching"
     var
         LOBStaging, LOBStaging1 : Record TTS_SAP;
         CPMSStaging: Record TTS_ARAP;
+        MatchingIDList: List of [Code[20]];
         MatchingID: Code[20];
+        ProgressDialog: Dialog;
+        Counter: Integer;
+        TotalMatchingIDs: Integer;
+        ProgressMsg: Label 'Removing Matching...\\Processing Matching ID #1###### of #2######', Comment = '#1 = Current count, #2 = Total count';
+        CompletedMsg: Label 'Remove Matching completed successfully.\\%1 Matching IDs processed.', Comment = '%1 = Total count';
     begin
         CurrPage.SetSelectionFilter(LOBStaging);
-        Clear(MatchingID);
         LOBStaging.SetLoadFields("Matching ID", "Matching Status");
         LOBStaging.SetRange("Matching Status", LOBStaging."Matching Status"::Matched);
         LOBStaging.SetFilter("Matching ID", '<>%1', '');
+        
+        // Collect all unique Matching IDs first
         if LOBStaging.FindSet() then
             repeat
-                if MatchingID <> LOBStaging."Matching ID" then begin
-                    CPMSStaging.Reset();
-                    CPMSStaging.SetLoadFields("LOB Matching ID", "LOB Matching Status");
-                    CPMSStaging.SetRange("LOB Matching ID", LOBStaging."Matching ID");
-                    CPMSStaging.SetRange("LOB Matching Status", CPMSStaging."LOB Matching Status"::Matched);
-                    if CPMSStaging.FindSet(true) then
-                        repeat
-                            CPMSStaging.Validate("LOB Matching Status", CPMSStaging."LOB Matching Status"::Unmatched);
-                            CPMSStaging.Modify(false);
-                        until CPMSStaging.Next() = 0;
-
-                    LOBStaging1.Reset();
-                    LOBStaging1.SetLoadFields("Matching ID", "Matching Status");
-                    LOBStaging1.SetRange("Matching ID", LOBStaging."Matching ID");
-                    LOBStaging1.SetRange("Matching Status", LOBStaging1."Matching Status"::Matched);
-                    if LOBStaging1.FindSet(true) then
-                        repeat
-                            LOBStaging1.Validate("Matching Status", LOBStaging1."Matching Status"::Unmatched);
-                            LOBStaging1.Modify(false);
-                        until LOBStaging1.Next() = 0;
-                end;
-                MatchingID := LOBStaging."Matching ID";
+                if not MatchingIDList.Contains(LOBStaging."Matching ID") then
+                    MatchingIDList.Add(LOBStaging."Matching ID");
             until LOBStaging.Next() = 0;
+
+        TotalMatchingIDs := MatchingIDList.Count();
+        if TotalMatchingIDs = 0 then
+            exit;
+
+        // Show progress dialog
+        ProgressDialog.Open(ProgressMsg);
+        Counter := 0;
+
+        // Process each unique Matching ID only once - using batch operations for speed
+        foreach MatchingID in MatchingIDList do begin
+            Counter += 1;
+            ProgressDialog.Update(1, Counter);
+            ProgressDialog.Update(2, TotalMatchingIDs);
+
+            // Use ModifyAll for batch update - much faster than individual Modify() calls
+            // Update CPMS records
+            CPMSStaging.Reset();
+            CPMSStaging.SetRange("LOB Matching ID", MatchingID);
+            CPMSStaging.SetRange("LOB Matching Status", CPMSStaging."LOB Matching Status"::Matched);
+            if not CPMSStaging.IsEmpty() then
+                CPMSStaging.ModifyAll("LOB Matching Status", CPMSStaging."LOB Matching Status"::Unmatched, false);
+
+            // Update LOB records
+            LOBStaging1.Reset();
+            LOBStaging1.SetRange("Matching ID", MatchingID);
+            LOBStaging1.SetRange("Matching Status", LOBStaging1."Matching Status"::Matched);
+            if not LOBStaging1.IsEmpty() then
+                LOBStaging1.ModifyAll("Matching Status", LOBStaging1."Matching Status"::Unmatched, false);
+        end;
+
+        ProgressDialog.Close();
+        Message(CompletedMsg, TotalMatchingIDs);
     end;
 
     procedure ToggleMatchedFilter(SetFilterOn: Boolean)
