@@ -80,13 +80,14 @@ codeunit 85020 "TTS-ARAP Matching"
                     end;
                 until TempSelectedTTSSAP.Next() = 0;
         end else begin
-            // Use all records for automatic matching
+            // Use all records for automatic matching - optimized with SetCurrentKey
             TTS_SAP.Reset();
+            TTS_SAP.SetCurrentKey(Scheme, Activity, "Matching Status", PaymentReference);
             TTS_SAP.SetRange(Scheme, 'FTTS');
+            TTS_SAP.SetRange(Activity, 'INVOICE');
             TTS_SAP.SetFilter("Matching Status", '%1|%2', 
                 TTS_SAP."Matching Status"::Unmatched, 
                 TTS_SAP."Matching Status"::Error);
-            TTS_SAP.SetRange(Activity, 'INVOICE');
             TTS_SAP.SetLoadFields(PaymentReference, TestCostWithoutVat);
             
             if TTS_SAP.FindSet() then
@@ -128,13 +129,14 @@ codeunit 85020 "TTS-ARAP Matching"
                     end;
                 until TempSelectedTTSARAP.Next() = 0;
         end else begin
-            // Use all records for automatic matching
+            // Use all records for automatic matching - optimized with SetCurrentKey
             TTS_ARAP.Reset();
+            TTS_ARAP.SetCurrentKey(Scheme, Activity, "LOB Matching Status", ReceiptNumber);
             TTS_ARAP.SetRange(Scheme, 'FTTS');
+            TTS_ARAP.SetRange(Activity, 'PAYMENT');
             TTS_ARAP.SetFilter("LOB Matching Status", '%1|%2', 
                 TTS_ARAP."LOB Matching Status"::Unmatched, 
                 TTS_ARAP."LOB Matching Status"::Error);
-            TTS_ARAP.SetRange(Activity, 'PAYMENT');
             TTS_ARAP.SetLoadFields(ReceiptNumber, ReceiptAmount);
             
             if TTS_ARAP.FindSet() then
@@ -207,16 +209,15 @@ codeunit 85020 "TTS-ARAP Matching"
                 MatchDetails := CopyStr(StrSubstNo('Auto-matched on %1. Reference: %2, Amount: %3', 
                     CurrentDateTime, TempMatchedPairs."Reference Key", TempMatchedPairs.Amount), 1, 1000);
                 
-                // Update TTS_SAP records
+                // Update TTS_SAP records - optimized with Modify(false) for performance
                 TTS_SAP.Reset();
+                TTS_SAP.SetCurrentKey(Scheme, Activity, PaymentReference, "Matching Status");
                 TTS_SAP.SetRange(Scheme, 'FTTS');
+                TTS_SAP.SetRange(Activity, 'INVOICE');
+                TTS_SAP.SetRange(PaymentReference, TempMatchedPairs."Reference Key");
                 TTS_SAP.SetFilter("Matching Status", '%1|%2', 
                     TTS_SAP."Matching Status"::Unmatched, 
                     TTS_SAP."Matching Status"::Error);
-                TTS_SAP.SetRange(Activity, 'INVOICE');
-                TTS_SAP.SetRange(PaymentReference, TempMatchedPairs."Reference Key");
-                TTS_SAP.SetLoadFields("Matching Status", "Matching ID", "Matching Processed Date Time", 
-                    "Match Details", "Match Type", "Matched By");
                 
                 if TTS_SAP.FindSet(true) then
                     repeat
@@ -226,19 +227,18 @@ codeunit 85020 "TTS-ARAP Matching"
                         TTS_SAP."Match Details" := MatchDetails;
                         TTS_SAP."Match Type" := MatchType;
                         TTS_SAP."Matched By" := UserId();
-                        TTS_SAP.Modify(true);
+                        TTS_SAP.Modify(false);  // Use Modify(false) for better performance
                     until TTS_SAP.Next() = 0;
                 
-                // Update TTS_ARAP records
+                // Update TTS_ARAP records - optimized with Modify(false) for performance
                 TTS_ARAP.Reset();
+                TTS_ARAP.SetCurrentKey(Scheme, Activity, ReceiptNumber, "LOB Matching Status");
                 TTS_ARAP.SetRange(Scheme, 'FTTS');
+                TTS_ARAP.SetRange(Activity, 'PAYMENT');
+                TTS_ARAP.SetRange(ReceiptNumber, TempMatchedPairs."Reference Key");
                 TTS_ARAP.SetFilter("LOB Matching Status", '%1|%2', 
                     TTS_ARAP."LOB Matching Status"::Unmatched, 
                     TTS_ARAP."LOB Matching Status"::Error);
-                TTS_ARAP.SetRange(Activity, 'PAYMENT');
-                TTS_ARAP.SetRange(ReceiptNumber, TempMatchedPairs."Reference Key");
-                TTS_ARAP.SetLoadFields("LOB Matching Status", "LOB Matching ID", "LOB Processed Date Time", 
-                    "LOB Match Details", "LOB Match Type", "LOB Matched By");
                 
                 if TTS_ARAP.FindSet(true) then
                     repeat
@@ -248,7 +248,7 @@ codeunit 85020 "TTS-ARAP Matching"
                         TTS_ARAP."LOB Match Details" := MatchDetails;
                         TTS_ARAP."LOB Match Type" := MatchType;
                         TTS_ARAP."LOB Matched By" := UserId();
-                        TTS_ARAP.Modify(true);
+                        TTS_ARAP.Modify(false);  // Use Modify(false) for better performance
                     until TTS_ARAP.Next() = 0;
                 
                 // Increment pair count once per matched pair (not per record)
