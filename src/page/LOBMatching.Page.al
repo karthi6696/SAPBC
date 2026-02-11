@@ -372,13 +372,14 @@ page 85017 "LOB Matching"
             ProgressDialog.Update(2, TotalMatchingIDs);
 
             // Use ModifyAll for batch update - much faster than individual Modify() calls
+            // Update CPMS records
             CPMSStaging.Reset();
             CPMSStaging.SetRange("LOB Matching ID", MatchingID);
             CPMSStaging.SetRange("LOB Matching Status", CPMSStaging."LOB Matching Status"::Matched);
             if not CPMSStaging.IsEmpty() then
                 CPMSStaging.ModifyAll("LOB Matching Status", CPMSStaging."LOB Matching Status"::Unmatched, false);
 
-            // Use ModifyAll for batch update - much faster than individual Modify() calls
+            // Update LOB records
             LOBStaging1.Reset();
             LOBStaging1.SetRange("Matching ID", MatchingID);
             LOBStaging1.SetRange("Matching Status", LOBStaging1."Matching Status"::Matched);
