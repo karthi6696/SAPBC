@@ -365,31 +365,25 @@ page 85017 "LOB Matching"
         ProgressDialog.Open(ProgressMsg);
         Counter := 0;
 
-        // Process each unique Matching ID only once
+        // Process each unique Matching ID only once - using batch operations for speed
         foreach MatchingID in MatchingIDList do begin
             Counter += 1;
             ProgressDialog.Update(1, Counter);
             ProgressDialog.Update(2, TotalMatchingIDs);
 
+            // Use ModifyAll for batch update - much faster than individual Modify() calls
             CPMSStaging.Reset();
-            CPMSStaging.SetLoadFields("LOB Matching ID", "LOB Matching Status");
             CPMSStaging.SetRange("LOB Matching ID", MatchingID);
             CPMSStaging.SetRange("LOB Matching Status", CPMSStaging."LOB Matching Status"::Matched);
-            if CPMSStaging.FindSet(true) then
-                repeat
-                    CPMSStaging.Validate("LOB Matching Status", CPMSStaging."LOB Matching Status"::Unmatched);
-                    CPMSStaging.Modify(false);
-                until CPMSStaging.Next() = 0;
+            if not CPMSStaging.IsEmpty() then
+                CPMSStaging.ModifyAll("LOB Matching Status", CPMSStaging."LOB Matching Status"::Unmatched, false);
 
+            // Use ModifyAll for batch update - much faster than individual Modify() calls
             LOBStaging1.Reset();
-            LOBStaging1.SetLoadFields("Matching ID", "Matching Status");
             LOBStaging1.SetRange("Matching ID", MatchingID);
             LOBStaging1.SetRange("Matching Status", LOBStaging1."Matching Status"::Matched);
-            if LOBStaging1.FindSet(true) then
-                repeat
-                    LOBStaging1.Validate("Matching Status", LOBStaging1."Matching Status"::Unmatched);
-                    LOBStaging1.Modify(false);
-                until LOBStaging1.Next() = 0;
+            if not LOBStaging1.IsEmpty() then
+                LOBStaging1.ModifyAll("Matching Status", LOBStaging1."Matching Status"::Unmatched, false);
         end;
 
         ProgressDialog.Close();
