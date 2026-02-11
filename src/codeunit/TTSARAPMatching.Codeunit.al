@@ -203,6 +203,7 @@ codeunit 85020 "TTS-ARAP Matching"
         
         // Pre-fetch all TTS_SAP and TTS_ARAP records in ONE query each
         // This eliminates N SELECT queries (one per pair)
+        // Note: Filter string limited to ~1000 chars. For >50 pairs with long refs, consider chunking.
         ProcessingDialog.Update(1, 'Pre-fetching records for matching...');
         
         // Build filter for all PaymentReferences from matched pairs
@@ -218,6 +219,10 @@ codeunit 85020 "TTS-ARAP Matching"
                     ReceiptNoFilter += '|';
                 ReceiptNoFilter += TempMatchedPairs."Reference Key";
             until TempMatchedPairs.Next() = 0;
+        
+        // Validate filter string size (AL text limit is ~1000-2000 chars)
+        if StrLen(PaymentRefFilter) > 1000 then
+            Error('Too many matching pairs (%1). Filter exceeds size limit. Please process in smaller batches.', TotalPairs);
         
         // Pre-fetch ALL TTS_SAP records that match ANY pair - ONE query
         TTS_SAP.Reset();
@@ -269,15 +274,16 @@ codeunit 85020 "TTS-ARAP Matching"
                 TempTTSSAP.SetRange(PaymentReference, TempMatchedPairs."Reference Key");
                 if TempTTSSAP.FindSet() then
                     repeat
-                        // Get the actual record for updating
-                        TTS_SAP.Get(TempTTSSAP."Entry No.");
-                        TTS_SAP."Matching Status" := TTS_SAP."Matching Status"::Matched;
-                        TTS_SAP."Matching ID" := MatchingID;
-                        TTS_SAP."Matching Processed Date Time" := CurrentDateTime;
-                        TTS_SAP."Match Details" := MatchDetails;
-                        TTS_SAP."Match Type" := MatchType;
-                        TTS_SAP."Matched By" := UserId();
-                        TTS_SAP.Modify(false);
+                        // Get the actual record for updating (with error handling)
+                        if TTS_SAP.Get(TempTTSSAP."Entry No.") then begin
+                            TTS_SAP."Matching Status" := TTS_SAP."Matching Status"::Matched;
+                            TTS_SAP."Matching ID" := MatchingID;
+                            TTS_SAP."Matching Processed Date Time" := CurrentDateTime;
+                            TTS_SAP."Match Details" := MatchDetails;
+                            TTS_SAP."Match Type" := MatchType;
+                            TTS_SAP."Matched By" := UserId();
+                            TTS_SAP.Modify(false);
+                        end;
                     until TempTTSSAP.Next() = 0;
                 
                 // Update TTS_ARAP records from temporary table (no SELECT query)
@@ -285,15 +291,16 @@ codeunit 85020 "TTS-ARAP Matching"
                 TempTTSARAP.SetRange(ReceiptNumber, TempMatchedPairs."Reference Key");
                 if TempTTSARAP.FindSet() then
                     repeat
-                        // Get the actual record for updating
-                        TTS_ARAP.Get(TempTTSARAP."Entry No.");
-                        TTS_ARAP."LOB Matching Status" := TTS_ARAP."LOB Matching Status"::Matched;
-                        TTS_ARAP."LOB Matching ID" := MatchingID;
-                        TTS_ARAP."LOB Processed Date Time" := CurrentDateTime;
-                        TTS_ARAP."LOB Match Details" := MatchDetails;
-                        TTS_ARAP."LOB Match Type" := MatchType;
-                        TTS_ARAP."LOB Matched By" := UserId();
-                        TTS_ARAP.Modify(false);
+                        // Get the actual record for updating (with error handling)
+                        if TTS_ARAP.Get(TempTTSARAP."Entry No.") then begin
+                            TTS_ARAP."LOB Matching Status" := TTS_ARAP."LOB Matching Status"::Matched;
+                            TTS_ARAP."LOB Matching ID" := MatchingID;
+                            TTS_ARAP."LOB Processed Date Time" := CurrentDateTime;
+                            TTS_ARAP."LOB Match Details" := MatchDetails;
+                            TTS_ARAP."LOB Match Type" := MatchType;
+                            TTS_ARAP."LOB Matched By" := UserId();
+                            TTS_ARAP.Modify(false);
+                        end;
                     until TempTTSARAP.Next() = 0;
                 
                 // Increment pair count once per matched pair (not per record)
